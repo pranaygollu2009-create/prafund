@@ -35,13 +35,24 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+    // No Supabase configured (e.g. static GitHub Pages deploy without secrets):
+    // run in demo mode instead of crashing. Auth/cloud calls will fail gracefully;
+    // local-simulation features keep working.
+    console.warn(
+      "[Supabase] Missing environment variables — running in demo mode " +
+        "(sign-in and cloud sync disabled). Set VITE_SUPABASE_URL and " +
+        "VITE_SUPABASE_PUBLISHABLE_KEY to enable them.",
+    );
+    return createClient<Database>("https://stub.supabase.invalid", "stub-anon-key", {
+      global: {
+        fetch: createSupabaseFetch("stub-anon-key"),
+      },
+      auth: {
+        storage: brokeredPreviewStorage(),
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
