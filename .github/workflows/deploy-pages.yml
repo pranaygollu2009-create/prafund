@@ -34,6 +34,9 @@ jobs:
           # Optional: live market feed (deploy supabase/functions/market-quotes first).
           # If unset, the site falls back to clearly-labeled simulated prices.
           VITE_MARKET_QUOTES_URL: ${{ secrets.VITE_MARKET_QUOTES_URL }}
+          # GitHub Pages project sites are served under /<repo>/ — assets must be
+          # built with that base path. Change to "/" once prafund.co is live.
+          PAGES_BASE: /prafund/
           # Uncomment once prafund.co DNS points at GitHub Pages:
           # PAGES_CNAME: prafund.co
       - uses: actions/configure-pages@v5

@@ -10,6 +10,12 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // (GitHub Pages, Cloudflare Pages assets, S3, ...). Default builds keep the nitro server.
 const staticBuild = process.env["STATIC_BUILD"] === "1";
 
+// PAGES_BASE sets the deploy base path for static builds — GitHub Pages project
+// sites serve under /<repo>/ (e.g. PAGES_BASE=/prafund/), custom domains use "/".
+const staticConfig = staticBuild
+  ? { nitro: false as const, vite: { base: process.env["PAGES_BASE"] || "/" } }
+  : {};
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
@@ -18,6 +24,5 @@ export default defineConfig({
     // SPA mode: prerender a static shell that client-renders every path.
     ...(staticBuild ? { spa: { enabled: true } } : {}),
   },
-  // Pure client build: no nitro server bundle in static mode.
-  ...(staticBuild ? { nitro: false as const } : {}),
+  ...staticConfig,
 });
