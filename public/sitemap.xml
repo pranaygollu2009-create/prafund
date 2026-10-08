@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://prafund.co/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://prafund.co/how-it-works</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://prafund.co/start</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://prafund.co/dashboard</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://prafund.co/markets</loc><changefreq>hourly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://prafund.co/invest</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://prafund.co/portfolio</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://prafund.co/learn</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://prafund.co/reviews</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://prafund.co/users</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
-  <url><loc>https://prafund.co/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://prafund.co/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://prafund.co/auth</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/how-it-works</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/start</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/dashboard</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/markets</loc><changefreq>hourly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/invest</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/portfolio</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/learn</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/reviews</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/users</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pranaygollu2009-create.github.io/prafund/auth</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

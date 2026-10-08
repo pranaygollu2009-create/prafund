@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://prafund.co/sitemap.xml
+Sitemap: https://pranaygollu2009-create.github.io/prafund/sitemap.xml
