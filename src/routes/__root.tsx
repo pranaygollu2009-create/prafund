@@ -98,6 +98,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:site_name", content: "Prafund" },
       { property: "og:url", content: "https://prafund.co/" },
+      { property: "og:image", content: "https://pranaygollu2009-create.github.io/prafund/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:image", content: "https://pranaygollu2009-create.github.io/prafund/og-image.png" },
     ],
     links: [
       {
