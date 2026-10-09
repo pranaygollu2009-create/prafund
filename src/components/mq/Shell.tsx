@@ -6,7 +6,6 @@ import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 import { useSession } from "@/lib/mq/auth";
 
 const NAV = [
-  { to: "/", label: "Home" },
   { to: "/how-it-works", label: "How It Works" },
   { to: "/dashboard", label: "Simulator" },
   { to: "/markets", label: "Markets" },
@@ -180,14 +179,13 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function MobileTabs() {
   const tabs = [
-    { to: "/", label: "Home" },
     { to: "/dashboard", label: "Journey" },
     { to: "/markets", label: "Markets" },
     { to: "/invest", label: "Invest" },
     { to: "/learn", label: "Learn" },
   ] as const;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-background/85 backdrop-blur-xl lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-border bg-background/85 backdrop-blur-xl lg:hidden">
       {tabs.map((t) => (
         <Link
           key={t.to}
