@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { HelpCircle, Menu, Moon, Sun, UserRound, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import logoMarkUrl from "@/assets/logo-mark.png";
 import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 import { useSession } from "@/lib/mq/auth";
 
@@ -22,7 +23,7 @@ export function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2">
       <img
-        src="/logo-mark.png"
+        src={logoMarkUrl}
         alt=""
         aria-hidden
         className="h-9 w-auto shrink-0"

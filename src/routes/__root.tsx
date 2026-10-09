@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import logoMarkFavicon from "../assets/logo-mark-180.png";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
@@ -109,9 +110,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap",
       },
-      { rel: "icon", href: "/logo-mark-180.png", type: "image/png", sizes: "180x180" },
+      { rel: "icon", href: logoMarkFavicon, type: "image/png", sizes: "180x180" },
       { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
-      { rel: "apple-touch-icon", href: "/logo-mark-180.png" },
+      { rel: "apple-touch-icon", href: logoMarkFavicon },
       { rel: "canonical", href: "https://prafund.co/" },
     ],
   }),
