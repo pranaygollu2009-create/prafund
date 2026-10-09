@@ -6,11 +6,11 @@ import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About Prafund — privacy, disclaimer and contact" },
+      { title: "About Prafund (prafund github io) — privacy, disclaimer and contact" },
       {
         name: "description",
         content:
-          "Why Prafund exists, what data it does and does not collect, the educational simulation disclaimer, and how to reach the team.",
+          "About Prafund (pranaygollu2009 prafund on GitHub): why this free financial life simulator for students exists, what data it does and does not collect, the educational disclaimer, and contact.",
       },
       { property: "og:title", content: "About Prafund" },
       { property: "og:description", content: "An educational financial simulator built for students, with no real money." },

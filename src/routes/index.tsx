@@ -186,6 +186,10 @@ function Home() {
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 py-16">
+        <p className="mx-auto mt-2 max-w-3xl text-center text-xs leading-relaxed text-muted-foreground">
+          Also known as: prafund github io · pranaygollu2009 prafund · free financial life simulator game for students.
+          Find us by searching those phrases, or bookmark this page in Safari or Chrome.
+        </p>
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard
             title="Return Simulator"
