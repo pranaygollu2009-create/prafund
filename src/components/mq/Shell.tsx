@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { HelpCircle, Menu, Moon, Sun, UserRound, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { PrafundMark } from "./PrafundMark";
 import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 import { useSession } from "@/lib/mq/auth";
 
@@ -22,7 +21,12 @@ const NAV = [
 export function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2">
-      <PrafundMark className="size-8 shrink-0 drop-shadow-sm" />
+      <img
+        src="/logo-mark.png"
+        alt=""
+        aria-hidden
+        className="h-9 w-auto shrink-0"
+      />
       <span className="font-display text-lg font-bold tracking-tight">Prafund</span>
     </Link>
   );
