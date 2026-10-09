@@ -12,11 +12,11 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Prafund — What would you do with your first paycheck?" },
+      { title: "Prafund — Free financial life simulator game for students (budgeting & investing)" },
       {
         name: "description",
         content:
-          "Build a simulated financial life: pick a career, set a budget, invest fake money and watch how each decision changes your net worth.",
+          "Prafund is a free financial life simulator game for students: pick a career, budget your paycheck, invest simulated money in real-ticker markets, and learn money by making decisions — no real money, no signup needed.",
       },
       { property: "og:title", content: "Prafund — What would you do with your first paycheck?" },
       {

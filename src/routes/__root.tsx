@@ -82,11 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Prafund — Learn money by making decisions" },
+      { title: "Prafund — Free financial life simulator game for students" },
       {
         name: "description",
         content:
-          "Prafund is an educational financial life simulator: choose a career, build a budget, invest simulated money and see what your decisions do.",
+          "Prafund is a free financial life simulator for students: pick a career, budget your paycheck, invest simulated money and learn money by making decisions.",
       },
       { name: "author", content: "Prafund" },
       { property: "og:title", content: "Prafund — Learn money by making decisions" },
