@@ -97,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:site_name", content: "Prafund" },
-      { property: "og:url", content: "https://prafund.co/" },
+      { property: "og:url", content: "https://pranaygollu2009-create.github.io/prafund/" },
       { property: "og:image", content: "https://pranaygollu2009-create.github.io/prafund/og-image.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
@@ -117,7 +117,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: logoMarkFavicon, type: "image/png", sizes: "180x180" },
       { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
       { rel: "apple-touch-icon", href: logoMarkFavicon },
-      { rel: "canonical", href: "https://prafund.co/" },
+      { rel: "canonical", href: "https://pranaygollu2009-create.github.io/prafund/" },
     ],
   }),
 
