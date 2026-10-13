@@ -3,7 +3,6 @@
  * Yahoo Finance). Used by the /markets page; the sim/trading pages use
  * lib/mq/market.ts, which shares the same feed.
  */
-
 export type LiveQuote = {
   symbol: string;
   name?: string;
@@ -34,9 +33,14 @@ export type LiveQuote = {
 
 export type ChartSeries = { points: { t: number; p: number }[]; prevClose: number | null };
 
-const URL_ = (import.meta as unknown as { env: Record<string, string | undefined> }).env[
-  "VITE_MARKET_QUOTES_URL"
-];
+// Public read-only feed endpoint. Used as the default so the static build
+// always has a working feed; VITE_MARKET_QUOTES_URL can override it.
+const DEFAULT_FEED_URL =
+  "https://cjepxvdcwccbnuhmotrc.supabase.co/functions/v1/market-quotes";
+const URL_ =
+  (import.meta as unknown as { env: Record<string, string | undefined> }).env[
+    "VITE_MARKET_QUOTES_URL"
+  ] || DEFAULT_FEED_URL;
 
 function base(): string {
   if (!URL_) throw new Error("Live market feed is not configured (VITE_MARKET_QUOTES_URL).");
