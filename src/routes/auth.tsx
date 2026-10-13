@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Shell } from "@/components/mq/Shell";
 import { safePath, useSession } from "@/lib/mq/auth";
 
@@ -66,16 +65,23 @@ function AuthPage() {
     setBusy(true);
     try {
       sessionStorage.setItem("moneyquest.next", next);
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: siteRoot(),
+      // Supabase's native implicit-flow OAuth — the Lovable OAuth broker only
+      // exists on Lovable's own hosting (its /~oauth/initiate route 404s on
+      // GitHub Pages, so users never reached Google at all).
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: siteRoot() },
       });
-      if (result.error) {
-        setError("We couldn't start Google sign-in. Please try again.");
+      if (error) {
+        setError(
+          error.message.includes("not enabled")
+            ? "Google sign-in is not configured yet. Please use email and password."
+            : "We couldn't start Google sign-in. Please try again.",
+        );
         setBusy(false);
         return;
       }
-      if (result.redirected) return;
-      void navigate({ to: next, replace: true });
+      // Successful OAuth navigates the browser away to Google; nothing to do.
     } catch {
       setError("We couldn't start Google sign-in. Please try again.");
       setBusy(false);
