@@ -31,6 +31,17 @@ export const Route = createFileRoute("/auth")({
 
 type Mode = "signin" | "signup" | "forgot";
 
+/**
+ * Absolute URL of the app root, including the deploy base path
+ * (e.g. https://pranaygollu2009-create.github.io/prafund/ on GitHub Pages).
+ * Email-verification links redirect here — a bare origin would 404 because
+ * the user-site root has no Pages deployment.
+ */
+function siteRoot(): string {
+  const base = (import.meta as unknown as { env: Record<string, string | undefined> }).env["BASE_URL"] ?? "/";
+  return `${window.location.origin}${base.endsWith("/") ? base : `${base}/`}`;
+}
+
 function AuthPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -56,7 +67,7 @@ function AuthPage() {
     try {
       sessionStorage.setItem("moneyquest.next", next);
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: siteRoot(),
       });
       if (result.error) {
         setError("We couldn't start Google sign-in. Please try again.");
@@ -79,7 +90,7 @@ function AuthPage() {
     try {
       if (mode === "forgot") {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${siteRoot()}reset-password`,
         });
         if (err) throw err;
         setNotice("Password reset link sent. Check your inbox.");
@@ -88,7 +99,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: siteRoot(),
             data: { username: username.trim() || email.split("@")[0] },
           },
         });
