@@ -38,11 +38,14 @@ async function getCrumbSession(): Promise<Crumb | null> {
     // from every hop (redirect:"follow" drops per-hop set-cookie headers).
     let hopUrl = "https://fc.yahoo.com";
     let cookiePairs = "";
+    const hopStatuses: number[] = [];
+    const cookieNames: string[] = [];
     for (let hop = 0; hop < 4 && hopUrl; hop++) {
       const rh = await fetch(hopUrl, {
         headers: { "user-agent": UA },
         redirect: "manual",
       });
+      hopStatuses.push(rh.status);
       const raw =
         typeof (rh.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function"
           ? (rh.headers as { getSetCookie: () => string[] }).getSetCookie()
@@ -51,6 +54,7 @@ async function getCrumbSession(): Promise<Crumb | null> {
         .map((c) => c.split(";")[0].trim())
         .filter(Boolean);
       if (pairs.length) {
+        for (const px of pairs) cookieNames.push(px.split("=")[0] ?? "");
         const names = new Set(pairs.map((p) => p.split("=")[0]!.toLowerCase()));
         cookiePairs = cookiePairs
           .split("; ")
@@ -69,19 +73,32 @@ async function getCrumbSession(): Promise<Crumb | null> {
         (rh as unknown as { body: ReadableStream }).body.cancel();
       }
     }
-    const r2 = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
-      headers: {
-        "user-agent": UA,
-        accept: "application/json",
-        ...(cookiePairs ? { cookie: cookiePairs } : {}),
-      },
-    });
-    const crumb = (await r2.text()).trim();
+    const crumbHosts = ["query2.finance.yahoo.com", "query1.finance.yahoo.com"];
+    let r2: Response | null = null;
+    let crumb = "";
+    const crumbStatuses: number[] = [];
+    for (const ch of crumbHosts) {
+      const rr = await fetch(`https://${ch}/v1/test/getcrumb`, {
+        headers: {
+          "user-agent": UA,
+          accept: "application/json",
+          ...(cookiePairs ? { cookie: cookiePairs } : {}),
+        },
+      });
+      crumbStatuses.push(rr.status);
+      const t = (await rr.text()).trim();
+      if (rr.ok && t && t.length <= 30 && !t.startsWith("\"")) {
+        r2 = rr;
+        crumb = t;
+        break;
+      }
+    }
     debugInfo = {
-      hopCookies: cookiePairs.split(";").filter(Boolean).length,
-      crumbStatus: r2.status,
+      hopStatuses,
+      cookieNames,
+      crumbStatuses,
       crumbLen: crumb.length,
-      crumbOk: Boolean(crumb) && crumb.length <= 30 && !crumb.startsWith("\""),
+      crumbOk: Boolean(crumb),
     };
     if (!crumb || crumb.length > 30 || crumb.startsWith("\"")) {
       return crumbSession ? { cookie: crumbSession.cookie, crumb: crumbSession.crumb } : null;
