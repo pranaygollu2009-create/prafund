@@ -41,6 +41,7 @@ function siteRoot(): string {
   return `${window.location.origin}${base.endsWith("/") ? base : `${base}/`}`;
 }
 
+
 function AuthPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -65,6 +66,22 @@ function AuthPage() {
     setBusy(true);
     try {
       sessionStorage.setItem("moneyquest.next", next);
+      // Pre-flight: signInWithOAuth navigates the browser immediately, so a
+      // disabled provider would land the user on a raw JSON 400 page (it can
+      // only fail server-side, after navigation). /auth/v1/settings publicly
+      // lists enabled external providers — check it first.
+      const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env;
+      const res = await fetch(`${env["VITE_SUPABASE_URL"]}/auth/v1/settings`, {
+        headers: { apikey: env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? "" },
+      });
+      if (res.ok) {
+        const settings = (await res.json()) as { external?: Record<string, unknown> };
+        if (!settings.external?.["google"]) {
+          setError("Google sign-in is not configured yet. Please use email and password.");
+          setBusy(false);
+          return;
+        }
+      }
       // Supabase's native implicit-flow OAuth — the Lovable OAuth broker only
       // exists on Lovable's own hosting (its /~oauth/initiate route 404s on
       // GitHub Pages, so users never reached Google at all).
