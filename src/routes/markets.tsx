@@ -13,7 +13,7 @@ import {
 import { Shell } from "@/components/mq/Shell";
 import { InfoTip, SectionTitle, SimBadge } from "@/components/mq/bits";
 import { ChangeChip, QuoteCard, TickerTape } from "@/components/mq/market";
-import { TICKERS, marketIndex, pctLabel, priceLabel, type Quote } from "@/lib/mq/market";
+import { capLabel, TICKERS, marketIndex, pctLabel, priceLabel, type Quote } from "@/lib/mq/market";
 import { useMarket } from "@/lib/mq/useMarket";
 import { cn } from "@/lib/utils";
 
@@ -238,6 +238,11 @@ function KeyStats({ quote }: { quote: Quote }) {
   const hi = Math.max(...quote.points.map((p) => p.p));
   const lo = Math.min(...quote.points.map((p) => p.p));
   const stats: [string, string, string][] = [
+    [
+      "Market cap",
+      quote.marketCap != null ? capLabel(quote.marketCap) : "—",
+      "Total value of all shares — same figure Google Finance and Yahoo Finance show",
+    ],
     ["Open", priceLabel(quote.open), "Price when this session began"],
     [
       "Prev close",

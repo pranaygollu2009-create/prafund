@@ -7,6 +7,10 @@
 // payload for the Prafund market feed. Per-symbol responses are cached
 // in-memory for 45s so many clients polling stay cheap.
 //
+// Market cap comes from Yahoo's v7 quote endpoint (needs a session cookie +
+// crumb, both fetched once per cold start and cached 6h). If that endpoint is
+// unavailable the field is simply omitted per symbol — the card shows "—".
+//
 // Deploy: supabase functions deploy market-quotes --project-ref <ref>
 // (In Lovable: ask Lovable to deploy the `market-quotes` edge function.)
 // Then set VITE_MARKET_QUOTES_URL=https://<ref>.supabase.co/functions/v1/market-quotes
@@ -54,6 +58,87 @@ const UA =
 const HOSTS = ["query2.finance.yahoo.com", "query1.finance.yahoo.com"];
 
 const cache = new Map<string, { at: number; data: unknown }>();
+
+// ---- v7 crumb/cookie session for market cap ------------------------------
+let crumbSession: { cookie: string; crumb: string; at: number } | null = null;
+const CRUMB_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+async function getCrumbSession(): Promise<{ cookie: string; crumb: string } | null> {
+  if (crumbSession && Date.now() - crumbSession.at < CRUMB_TTL_MS) {
+    return { cookie: crumbSession.cookie, crumb: crumbSession.crumb };
+  }
+  try {
+    // 1) grab consent + session cookies
+    const res1 = await fetch("https://fc.yahoo.com", {
+      headers: { "user-agent": UA },
+      redirect: "follow",
+    });
+    const setCookie = res1.headers.get("set-cookie") ?? "";
+    // Edge runtime may merge multiple set-cookie headers into one string.
+    const cookiePairs = setCookie
+      .split(/,(?=[^;]+=)/)
+      .map((c) => c.split(";")[0].trim())
+      .filter(Boolean)
+      .join("; ");
+    // 2) exchange them for a crumb
+    const res2 = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+      headers: {
+        "user-agent": UA,
+        accept: "application/json",
+        ...(cookiePairs ? { cookie: cookiePairs } : {}),
+      },
+    });
+    if (!res2.ok) return crumbSession ? { cookie: crumbSession.cookie, crumb: crumbSession.crumb } : null;
+    const crumb = (await res2.text()).trim();
+    if (!crumb || crumb.length > 30) {
+      return crumbSession ? { cookie: crumbSession.cookie, crumb: crumbSession.crumb } : null;
+    }
+    crumbSession = { cookie: cookiePairs, crumb, at: Date.now() };
+    return { cookie: cookiePairs, crumb };
+  } catch {
+    return crumbSession ? { cookie: crumbSession.cookie, crumb: crumbSession.crumb } : null;
+  }
+}
+
+const capCache = new Map<string, { at: number; cap: number | null }>();
+
+/** Map of symbol -> raw marketCap from the Yahoo v7 quote endpoint (or null). */
+async function fetchMarketCaps(symbols: string[]): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>();
+  const now = Date.now();
+  const need: string[] = [];
+  for (const s of symbols) {
+    const hit = capCache.get(s);
+    if (hit && now - hit.at < TTL_MS * 20) out.set(s, hit.cap); // ~15min
+    else need.push(s);
+  }
+  if (need.length) {
+    const session = await getCrumbSession();
+    if (session) {
+      try {
+        const url =
+          "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" +
+          encodeURIComponent(need.join(",")) +
+          "&crumb=" +
+          encodeURIComponent(session.crumb);
+        const res = await fetch(url, {
+          headers: { "user-agent": UA, accept: "application/json", cookie: session.cookie },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          for (const q of json?.quoteResponse?.result ?? []) {
+            const cap = typeof q.marketCap === "number" ? q.marketCap : null;
+            out.set(q.symbol, cap);
+            capCache.set(q.symbol, { at: now, cap });
+          }
+        }
+      } catch {
+        // leave missing caps as null
+      }
+    }
+  }
+  return out;
+}
 
 function cors(res: Response) {
   const headers = new Headers(res.headers);
@@ -148,7 +233,14 @@ Deno.serve(async (req: Request) => {
   const force = url.searchParams.get("refresh") === "1";
 
   const results = await pool(symbols, 8, (s) => quote(s, force));
-  const quotes = results.filter(Boolean);
+  const quotesRaw = results.filter(Boolean) as Array<Record<string, unknown>>;
+
+  // Attach market caps (v7 quote endpoint). Best-effort: missing caps just omit the field.
+  const caps = await fetchMarketCaps(quotesRaw.map((q) => String(q.s)));
+  const quotes = quotesRaw.map((q) => {
+    const cap = caps.get(String(q.s));
+    return cap != null ? { ...q, marketCap: cap } : q;
+  });
 
   return cors(
     new Response(JSON.stringify({ quotes, updatedAt: Date.now() }), {

@@ -361,6 +361,7 @@ export type Quote = {
   exchange?: string;
   high52?: number;
   low52?: number;
+  marketCap?: number;
 };
 
 export type MarketSnapshot = {
@@ -443,6 +444,7 @@ type LiveQuote = {
   exchange?: string;
   high52?: number;
   low52?: number;
+  marketCap?: number;
   points: [number, number][];
 };
 
@@ -483,6 +485,7 @@ export async function fetchLiveSnapshot(
       ...(q.exchange ? { exchange: q.exchange } : {}),
       ...(q.high52 != null ? { high52: round(q.high52) } : {}),
       ...(q.low52 != null ? { low52: round(q.low52) } : {}),
+      ...(typeof q.marketCap === "number" ? { marketCap: q.marketCap } : {}),
     });
   }
   if (!quotes.length) throw new Error("Market feed had no known symbols.");
@@ -499,6 +502,14 @@ export const priceLabel = (n: number) =>
   "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const pctLabel = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+
+/** Google/Yahoo-style abbreviated market cap: $3.41T / $963.0B / $52.68B. */
+export const capLabel = (n: number) => {
+  if (n >= 1e12) return "$" + (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9) return "$" + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+  return "$" + n.toLocaleString("en-US");
+};
 
 /** Simple equal-weight index across everything, so the tape has a headline number. */
 export function marketIndex(snap: MarketSnapshot) {
