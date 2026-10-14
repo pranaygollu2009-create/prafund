@@ -345,21 +345,43 @@ function Slider({
   onChange: (v: number) => void;
 }) {
   const safeMax = Math.max(0, Math.round(max));
+  const clamped = Math.min(Math.max(0, value), safeMax);
+  const [text, setText] = useState<string | null>(null);
+
+  /** Accept free typing while focused; numeric keystrokes apply live, "" pauses updates. */
+  const commitText = (raw: string) => {
+    setText(raw);
+    if (raw === "") return; // keep last value while the box is empty (not yet committed)
+    const n = Number(raw.replace(/[^0-9]/g, ""));
+    if (!Number.isNaN(n)) onChange(Math.min(safeMax, Math.round(n)));
+  };
+
   return (
     <label className="mt-6 block">
-      <span className="flex items-baseline justify-between text-sm font-medium">
+      <span className="flex items-baseline gap-2 text-sm font-medium">
         {label}
-        <span className="mq-num font-bold">{money(Math.min(value, safeMax))}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={text ?? String(clamped)}
+          onChange={(e) => commitText(e.target.value)}
+          onBlur={() => setText(null)}
+          className="mq-num w-24 rounded-lg border border-input bg-background px-2 py-1 text-right font-bold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`${label} amount`}
+        />
       </span>
       <input
         type="range"
         min={0}
         max={safeMax || 1}
-        step={25}
-        value={Math.min(value, safeMax)}
-        onChange={(ev) => onChange(Number(ev.target.value))}
-        className="mt-3 h-2 w-full accent-[var(--primary)]"
-        aria-valuetext={money(Math.min(value, safeMax))}
+        step={5}
+        value={clamped}
+        onChange={(ev) => {
+          setText(null);
+          onChange(Number(ev.target.value));
+        }}
+        className="mq-slider mt-3 w-full"
+        aria-valuetext={money(clamped)}
       />
       <span className="mt-1 block text-xs text-muted-foreground">Up to {money(safeMax)} available</span>
     </label>

@@ -88,7 +88,7 @@ function Invest() {
 
             <p className="mt-6 text-sm font-medium">Allocation</p>
             <RangeRow label="Stocks" value={stocks} onChange={(v) => setStocks(Math.min(100 - bonds, v))} />
-            <RangeRow label="Bonds" value={bonds} onChange={(v) => setBonds(Math.min(100 - stocks, v))} />
+            <RangeRow label="Bonds" value={bonds} onChange={(v) => setBonds(Math.min(100 - stocks, Math.max(0, v)))} />
             <p className="mt-2 text-sm text-muted-foreground">
               Cash: <span className="mq-num font-bold text-foreground">{cash}%</span>
             </p>
@@ -334,15 +334,25 @@ function NumberField({
   step: number;
   onChange: (v: number) => void;
 }) {
+  // Keep the raw string while typing so clearing/decimal entry doesn't snap to 0.
+  const [text, setText] = useState<string | null>(null);
+  const commit = (raw: string) => {
+    setText(raw);
+    if (raw === "") return;
+    const cleaned = raw.replace(/[^0-9.]/g, "");
+    const n = Number(cleaned);
+    if (!Number.isNaN(n)) onChange(Math.max(0, n));
+  };
+
   return (
     <label className="mt-4 block first:mt-0">
       <span className="text-sm font-medium">{label}</span>
       <input
-        type="number"
-        min={0}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
+        type="text"
+        inputMode="decimal"
+        value={text ?? String(value)}
+        onChange={(e) => commit(e.target.value)}
+        onBlur={() => setText(null)}
         className="mq-num mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-lg font-bold focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       />
     </label>
@@ -363,7 +373,7 @@ function RangeRow({ label, value, onChange }: { label: string; value: number; on
         step={5}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-2 h-2 w-full accent-[var(--primary)]"
+        className="mq-slider mt-2 w-full"
       />
     </label>
   );
