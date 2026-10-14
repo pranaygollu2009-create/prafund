@@ -108,6 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "preconnect", href: "https://www.googletagmanager.com" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -126,6 +127,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
+
+/** Google Analytics 4 measurement ID (property "Prafund web"). */
+const GA4_ID = "G-MV11C3WVM1";
+
+/** Load gtag.js once and tag the first page view of this document. */
+function ensureGtagScript() {
+  if (typeof window === "undefined") return;
+  const w = window as unknown as {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+    __prafundGtagLoaded?: boolean;
+  };
+  if (w.__prafundGtagLoaded) return;
+  w.__prafundGtagLoaded = true;
+  w.dataLayer = w.dataLayer || [];
+  w.gtag = function gtag(...args: unknown[]) {
+    w.dataLayer!.push(args);
+  };
+  w.gtag("js", new Date());
+  w.gtag("config", GA4_ID);
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`;
+  document.head.appendChild(s);
+}
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -149,6 +175,10 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+
+  useEffect(() => {
+    ensureGtagScript();
+  }, []);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
