@@ -44,11 +44,13 @@ export function StatCard({
     reward: "text-reward",
   }[tone];
   return (
-    <div className="mq-card p-5">
+    <div className="mq-card flex h-full flex-col p-5">
       <p className="text-sm font-medium text-muted-foreground">{title}</p>
       <p className={cn("mq-num mt-2 text-3xl font-bold", toneClass)}>{value}</p>
       {delta && <p className="mt-1 text-sm font-medium text-muted-foreground">{delta}</p>}
-      {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
+      {hint && (
+        <p className="mt-auto pt-3 text-xs text-muted-foreground">{hint}</p>
+      )}
     </div>
   );
 }

@@ -140,13 +140,50 @@
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
+
+  /* Fast, fluid interaction feedback everywhere: ~120ms so links and
+     buttons respond with almost no perceived delay. */
+  a,
+  button,
+  input[type=button],
+  input[type=submit],
+  select,
+  summary {
+    transition:
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease,
+      box-shadow 160ms ease,
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  a:active,
+  button:active {
+    transform: scale(0.97);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+  }
 }
 
 @utility mq-card {
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
-  background-color: var(--color-card);
+  background-color: oklch(from var(--color-card) l c h / 82%);
+  backdrop-filter: blur(10px);
   box-shadow: var(--shadow-card);
+  transition:
+    box-shadow 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: oklch(0.72 0.09 200 / 45%);
+    box-shadow: var(--shadow-neon);
+  }
 }
 
 @utility mq-num {
@@ -171,45 +208,57 @@
   background-size: 100% 100%;
 }
 
-/* Animated liquid background: slow morphing colour blobs */
+/* Animated liquid background: slow morphing colour blobs drawn from
+   the logo's emerald (#10B981) → sky (#0EA5E9) gradient. */
 @keyframes mq-liquid-a {
   0% {
     transform: translate3d(-8%, -6%, 0) scale(1);
+    border-radius: 58% 42% 55% 45% / 52% 48% 52% 48%;
   }
-  50% {
-    transform: translate3d(10%, 8%, 0) scale(1.18);
+  33% {
+    border-radius: 45% 55% 60% 40% / 48% 44% 56% 52%;
+  }
+  66% {
+    border-radius: 52% 48% 42% 58% / 60% 42% 58% 40%;
   }
   100% {
     transform: translate3d(-8%, -6%, 0) scale(1);
+    border-radius: 58% 42% 55% 45% / 52% 48% 52% 48%;
   }
 }
 
 @keyframes mq-liquid-b {
   0% {
     transform: translate3d(6%, 10%, 0) scale(1.1);
+    border-radius: 48% 52% 42% 58% / 55% 45% 55% 45%;
   }
   50% {
     transform: translate3d(-10%, -8%, 0) scale(0.92);
+    border-radius: 60% 40% 52% 48% / 42% 58% 42% 58%;
   }
   100% {
     transform: translate3d(6%, 10%, 0) scale(1.1);
+    border-radius: 48% 52% 42% 58% / 55% 45% 55% 45%;
   }
 }
 
 @keyframes mq-liquid-c {
   0% {
     transform: translate3d(0, 4%, 0) scale(1);
+    border-radius: 55% 45% 58% 42% / 48% 52% 48% 52%;
   }
   50% {
     transform: translate3d(8%, -10%, 0) scale(1.22);
+    border-radius: 42% 58% 46% 54% / 58% 42% 58% 42%;
   }
   100% {
     transform: translate3d(0, 4%, 0) scale(1);
+    border-radius: 55% 45% 58% 42% / 48% 52% 48% 52%;
   }
 }
 
 @utility mq-liquid {
-  display: none;
+  display: block;
   pointer-events: none;
   position: fixed;
   inset: 0;
@@ -219,9 +268,9 @@
   & span {
     position: absolute;
     display: block;
-    border-radius: 9999px;
-    filter: blur(80px);
-    will-change: transform;
+    filter: blur(90px);
+    opacity: 0.55;
+    will-change: transform, border-radius;
   }
 
   & span:nth-child(1) {
@@ -229,8 +278,10 @@
     left: -10vw;
     width: 62vw;
     height: 62vw;
-    background: radial-gradient(circle at 30% 30%, oklch(0.72 0.1 250 / 26%), transparent 65%);
-    animation: mq-liquid-a 26s ease-in-out infinite;
+    background: radial-gradient(circle at 35% 35%, oklch(0.72 0.15 195 / 30%), transparent 65%);
+    animation:
+      mq-liquid-a 26s ease-in-out infinite,
+      mq-liquid-breathe 12s ease-in-out infinite;
   }
 
   & span:nth-child(2) {
@@ -238,8 +289,10 @@
     right: -16vw;
     width: 55vw;
     height: 55vw;
-    background: radial-gradient(circle at 60% 40%, oklch(0.76 0.11 78 / 16%), transparent 65%);
-    animation: mq-liquid-b 34s ease-in-out infinite;
+    background: radial-gradient(circle at 60% 40%, oklch(0.72 0.15 240 / 26%), transparent 65%);
+    animation:
+      mq-liquid-b 34s ease-in-out infinite,
+      mq-liquid-breathe 14s ease-in-out 2s infinite;
   }
 
   & span:nth-child(3) {
@@ -247,8 +300,20 @@
     left: 18vw;
     width: 58vw;
     height: 58vw;
-    background: radial-gradient(circle at 50% 50%, oklch(0.8 0.16 158 / 16%), transparent 65%);
-    animation: mq-liquid-c 30s ease-in-out infinite;
+    background: radial-gradient(circle at 50% 50%, oklch(0.78 0.17 158 / 28%), transparent 65%);
+    animation:
+      mq-liquid-c 30s ease-in-out infinite,
+      mq-liquid-breathe 11s ease-in-out 1s infinite;
+  }
+}
+
+@keyframes mq-liquid-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
   }
 }
 

@@ -166,10 +166,10 @@ function Home() {
             title="Four steps, one paycheck at a time"
             sub="Every month you decide, something unexpected happens, and you see the result."
           />
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((s, i) => (
-              <div key={s.title} className="mq-card p-6">
-                <s.icon className="size-6 text-info" aria-hidden />
+              <div key={s.title} className="mq-card flex flex-col p-6">
+                <s.icon className="size-6 shrink-0 text-info" aria-hidden />
                 <p className="mt-4 text-xs font-semibold text-muted-foreground">STEP {i + 1}</p>
                 <h3 className="mt-1 text-lg font-bold">{s.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{s.text}</p>
@@ -190,7 +190,7 @@ function Home() {
           Also known as: prafund github io · pranaygollu2009 prafund · free financial life simulator game for students.
           Find us by searching those phrases, or bookmark this page in Safari or Chrome.
         </p>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid items-stretch gap-4 md:grid-cols-3">
           <StatCard
             title="Return Simulator"
             value="10,000 scenarios"
