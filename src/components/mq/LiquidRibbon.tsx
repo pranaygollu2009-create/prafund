@@ -1,42 +1,18 @@
 /**
- * LiquidRibbon — a full-screen canvas that paints ONE medium glossy liquid
- * band in the brand green, drifting slowly and meandering. Every few
- * seconds it picks a new random flow direction and curve, so the motion
- * wanders instead of looping one way.
+ * LiquidRibbon — a full-screen canvas that paints ONE volumetric liquid
+ * wave, shaded like 3D glass: soft body, depth core, glossy crest, and a
+ * specular highlight that slides along the curve. The motion NEVER stops:
+ * the wave continuously travels through the band, and the baseline drifts
+ * on a slow never-ending noise walk (no pause-and-restart — targets blend
+ * seamlessly forever).
  *
  * Single canvas + requestAnimationFrame; pauses when hidden; one static
  * frame under prefers-reduced-motion.
  */
 import { useEffect, useRef } from "react";
 
+const GREEN_LIGHT = "#0DBF7A"; // deep emerald so it reads on white
 const GREEN_DARK = "#2DE39F"; // brighter emerald for dark mode
-const GREEN_LIGHT = "#0DBF7A"; // deeper emerald so it reads on white
-
-/**
- * Meander state: the band's baseline follows a slow value-noise walk.
- * `target` is re-randomized every MEANDER_MS and the current values ease
- * toward it, which produces smooth, constantly-changing drift direction —
- * up, down, left-bias, right-bias — never the same loop twice.
- */
-interface Meander {
-  // baseline position as fraction of height
-  y: number;
-  targetY: number;
-  // space-domain wave phase (moves the curves along the band)
-  phase: number;
-  targetPhase: number;
-  // wave steepness multiplier (1 = gentle slope); re-rolled per meander
-  curl: number;
-  targetCurl: number;
-  // amplitude as fraction of height
-  amp: number;
-  targetAmp: number;
-  // secondary-wave weight
-  detail: number;
-  targetDetail: number;
-}
-
-const MEANDER_MS = 3800; // new direction roughly every 3.8s
 
 export function LiquidRibbon() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -66,101 +42,130 @@ export function LiquidRibbon() {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+    /* Continuous motion model
+     * -----------------------
+     * travel:  the wave pattern slides horizontally through the band at a
+     *          constant slow speed (this is the "flowing water" part — it
+     *          never pauses or reverses).
+     * walk:    three superposed slow sine drifts on the baseline height,
+     *          amplitude and curl, each with its own long period and random
+     *          phase. Because the walk terms are sum-of-sines, the baseline
+     *          wanders forever without snapping or stopping.
+     */
+    const SPEED = 0.00006; // wave pattern travel (px-frac per ms) — slow flow
+    const P1 = 21000; // long drift period ms (baseline)
+    const P2 = 13000; // medium drift period ms (amplitude)
+    const P3 = 17000; // med drift period ms (curl)
+    const seed = Math.random() * 1000;
 
-    // Start somewhere mid-screen with gentle motion.
-    const m: Meander = {
-      y: 0.42,
-      targetY: rnd(0.25, 0.6),
-      phase: 0,
-      targetPhase: rnd(-2, 2),
-      curl: 1,
-      targetCurl: rnd(0.5, 1.6),
-      amp: 0.08,
-      targetAmp: rnd(0.05, 0.11),
-      detail: 0.35,
-      targetDetail: rnd(0.2, 0.5),
-    };
-    let lastMeander = performance.now();
+    function waveState(t: number) {
+      const a = (2 * Math.PI * t) / P1 + seed;
+      const b = (2 * Math.PI * t) / P2 + seed * 2.7;
+      const c = (2 * Math.PI * t) / P3 + seed * 4.1;
+      return {
+        y: 0.44 + 0.16 * Math.sin(a) * Math.sin(a * 0.7 + 1.3), // baseline walk
+        amp: 0.075 + 0.045 * (0.5 + 0.5 * Math.sin(b)), // breathing amplitude
+        curl: 1.35 + 0.8 * Math.sin(c), // waving steepness
+        detail: 0.32 + 0.16 * Math.sin(b * 1.6 + 2.0), // secondary ripple weight
+      };
+    }
 
-    const retarget = () => {
-      m.targetY = rnd(0.2, 0.68);
-      m.targetPhase = m.phase + rnd(-1.6, 1.6);
-      m.targetCurl = rnd(0.4, 1.7) * (Math.random() < 0.5 ? -1 : 1);
-      m.targetAmp = rnd(0.04, 0.13);
-      m.targetDetail = rnd(0.15, 0.55);
-      lastMeander = performance.now();
-    };
-
-    let lastT = performance.now();
-    let smoothT = 0;
-
-    function waveY(x: number) {
+    /** Volumetric baseline y(x, t). */
+    function yAt(x: number, t: number, s: ReturnType<typeof waveState>) {
       const k = (x / Math.max(w, 1)) * Math.PI * 2;
-      const amp = m.amp * h;
+      const phase = k * s.curl - t * SPEED;
+      const amp = s.amp * h;
       return (
-        h * m.y +
-        Math.sin(k * m.curl + m.phase) * amp +
-        Math.sin(k * m.curl * 2.7 + m.phase * 1.6) * amp * m.detail
+        h * s.y +
+        Math.sin(phase) * amp +
+        Math.sin(phase * 2.7 + k * 0.8) * amp * s.detail
       );
     }
 
-    const draw = () => {
+    const draw = (t: number) => {
       const green = document.documentElement.classList.contains("dark")
         ? GREEN_DARK
         : GREEN_LIGHT;
+      const s = waveState(t);
       c2d.clearRect(0, 0, w, h);
       c2d.lineCap = "round";
       c2d.lineJoin = "round";
 
+      const step = Math.max(6, Math.floor(w / 130));
+
+      const trace = () => {
+        c2d.beginPath();
+        for (let x = -step, first = true; x <= w + step; x += step, first = false) {
+          const y = yAt(x, t, s);
+          if (first) c2d.moveTo(x, y);
+          else c2d.lineTo(x, y);
+        }
+      };
+
+      // 1) Shadow: soft dark under-glow gives the band lift off the page.
+      trace();
+      c2d.strokeStyle = document.documentElement.classList.contains("dark")
+        ? "rgba(0, 40, 25, 0.55)"
+        : "rgba(6, 78, 59, 0.35)";
+      c2d.save();
+      c2d.translate(0, 16);
+      c2d.globalAlpha = 0.5;
+      c2d.lineWidth = 80;
+      c2d.stroke();
+      c2d.restore();
+
+      // 2) Volumetric body: same path, three thickness layers = fake 3D
+      //    shading so the band looks rounded like a glass tube.
+      trace();
+      c2d.globalAlpha = 0.16;
+      c2d.lineWidth = 96;
+      c2d.stroke();
+      c2d.globalAlpha = 0.34;
+      c2d.lineWidth = 54;
+      c2d.stroke();
+      c2d.globalAlpha = 0.75;
+      c2d.lineWidth = 26;
+      c2d.stroke();
+
+      // 3) Glossy crest.
+      trace();
+      c2d.globalAlpha = 0.95;
+      c2d.strokeStyle = green;
+      c2d.lineWidth = 8;
+      c2d.stroke();
+
+      // 4) Specular highlight: a short bright streak that slides along the
+      //    curve — the detail that sells the 3D glass look.
+      const hlX = w * (0.12 + 0.76 * (0.5 + 0.5 * Math.sin(t * SPEED * 0.9)));
+      const span = w * 0.16;
+      c2d.save();
       c2d.beginPath();
-      const step = Math.max(8, Math.floor(w / 100));
-      for (let x = -step, first = true; x <= w + step; x += step, first = false) {
-        const y = waveY(x);
+      for (let x = hlX - span / 2, first = true; x <= hlX + span / 2; x += step, first = false) {
+        const y = yAt(x, t, s);
         if (first) c2d.moveTo(x, y);
         else c2d.lineTo(x, y);
       }
+      const grad = c2d.createLinearGradient(hlX - span / 2, 0, hlX + span / 2, 0);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.5, "rgba(255,255,255,0.85)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      c2d.strokeStyle = grad;
+      c2d.lineWidth = 4;
+      c2d.globalAlpha = 0.9;
+      c2d.stroke();
+      c2d.restore();
 
-      // Soft wide body.
-      c2d.strokeStyle = green;
-      c2d.globalAlpha = 0.18;
-      c2d.lineWidth = 74;
-      c2d.stroke();
-      // Mid band for depth.
-      c2d.globalAlpha = 0.3;
-      c2d.lineWidth = 38;
-      c2d.stroke();
-      // Glossy bright crest.
-      c2d.globalAlpha = 0.85;
-      c2d.lineWidth = 7;
-      c2d.stroke();
       c2d.globalAlpha = 1;
     };
 
     const loop = (t: number) => {
       if (!running) return;
-      const dt = Math.min(t - lastT, 100);
-      lastT = t;
-      smoothT += dt;
-
-      // Re-roll the drift target every MEANDER_MS.
-      if (t - lastMeander > MEANDER_MS) retarget();
-
-      // Ease everything toward its target (slow, watery).
-      const k = 1 - Math.pow(0.94, dt / 16.7);
-      m.y += (m.targetY - m.y) * k;
-      m.amp += (m.targetAmp - m.amp) * k;
-      m.curl += (m.targetCurl - m.curl) * k;
-      m.detail += (m.targetDetail - m.detail) * k;
-      m.phase += (m.targetPhase - m.phase) * k * 0.5;
-
-      draw();
+      draw(t);
       raf = requestAnimationFrame(loop);
     };
 
     if (reduced) {
-      draw();
-      // A single drift frame so a static ribbon is still positioned nicely.
+      draw(0);
     } else {
       raf = requestAnimationFrame(loop);
     }
@@ -171,7 +176,6 @@ export function LiquidRibbon() {
         cancelAnimationFrame(raf);
       } else if (!reduced) {
         running = true;
-        lastT = performance.now();
         raf = requestAnimationFrame(loop);
       }
     };
