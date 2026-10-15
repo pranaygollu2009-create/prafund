@@ -1,35 +1,42 @@
 /**
- * LiquidRibbon — a full-screen canvas that paints glossy, flowing liquid
- * ribbons in the brand's emerald→sky palette, animating continuously like
- * dark water. Single canvas + requestAnimationFrame; pauses when the tab is
- * hidden; renders one static frame when prefers-reduced-motion is set.
+ * LiquidRibbon — a full-screen canvas that paints ONE medium glossy liquid
+ * band in the brand green, drifting slowly and meandering. Every few
+ * seconds it picks a new random flow direction and curve, so the motion
+ * wanders instead of looping one way.
+ *
+ * Single canvas + requestAnimationFrame; pauses when hidden; one static
+ * frame under prefers-reduced-motion.
  */
 import { useEffect, useRef } from "react";
 
-const PALETTE = {
-  light: ["#38E8C8", "#19C8F2", "#7DE8F8", "#12E095"],
-  dark: ["#2DD4BF", "#22D3EE", "#A5F3FC", "#34D399"],
-};
+const GREEN_DARK = "#2DE39F"; // brighter emerald for dark mode
+const GREEN_LIGHT = "#0DBF7A"; // deeper emerald so it reads on white
 
-interface Band {
-  y: number; // 0..1 baseline across the screen height
-  amp: number; // amplitude as a fraction of height
-  speed: number; // phase drift per ms
-  freq: number; // wave cycles across the width
-  width: number; // stroke width in px
-  color: number; // palette index
-  alpha: number;
+/**
+ * Meander state: the band's baseline follows a slow value-noise walk.
+ * `target` is re-randomized every MEANDER_MS and the current values ease
+ * toward it, which produces smooth, constantly-changing drift direction —
+ * up, down, left-bias, right-bias — never the same loop twice.
+ */
+interface Meander {
+  // baseline position as fraction of height
+  y: number;
+  targetY: number;
+  // space-domain wave phase (moves the curves along the band)
   phase: number;
+  targetPhase: number;
+  // wave steepness multiplier (1 = gentle slope); re-rolled per meander
+  curl: number;
+  targetCurl: number;
+  // amplitude as fraction of height
+  amp: number;
+  targetAmp: number;
+  // secondary-wave weight
+  detail: number;
+  targetDetail: number;
 }
 
-const BANDS: Band[] = [
-  { y: 0.34, amp: 0.105, speed: 0.00035, freq: 1.5, width: 120, color: 2, alpha: 0.28, phase: 0.0 },
-  { y: 0.4, amp: 0.09, speed: -0.00028, freq: 1.9, width: 90, color: 0, alpha: 0.4, phase: 1.8 },
-  { y: 0.46, amp: 0.115, speed: 0.00021, freq: 1.3, width: 64, color: 1, alpha: 0.55, phase: 3.4 },
-  { y: 0.52, amp: 0.08, speed: -0.00033, freq: 2.2, width: 30, color: 1, alpha: 0.7, phase: 5.1 },
-  { y: 0.58, amp: 0.095, speed: 0.00026, freq: 1.7, width: 14, color: 3, alpha: 0.65, phase: 2.6 },
-  { y: 0.63, amp: 0.07, speed: -0.0004, freq: 2.7, width: 6, color: 2, alpha: 0.5, phase: 4.2 },
-];
+const MEANDER_MS = 3800; // new direction roughly every 3.8s
 
 export function LiquidRibbon() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -39,14 +46,13 @@ export function LiquidRibbon() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const c2d = ctx;
 
     let raf = 0;
     let running = true;
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const paletteQuery = () =>
-      document.documentElement.classList.contains("dark") ? PALETTE.dark : PALETTE.light;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const resize = () => {
@@ -54,60 +60,107 @@ export function LiquidRibbon() {
       h = canvas.clientHeight;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    function waveY(b: Band, x: number, t: number) {
-      const amp = b.amp * h;
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+
+    // Start somewhere mid-screen with gentle motion.
+    const m: Meander = {
+      y: 0.42,
+      targetY: rnd(0.25, 0.6),
+      phase: 0,
+      targetPhase: rnd(-2, 2),
+      curl: 1,
+      targetCurl: rnd(0.5, 1.6),
+      amp: 0.08,
+      targetAmp: rnd(0.05, 0.11),
+      detail: 0.35,
+      targetDetail: rnd(0.2, 0.5),
+    };
+    let lastMeander = performance.now();
+
+    const retarget = () => {
+      m.targetY = rnd(0.2, 0.68);
+      m.targetPhase = m.phase + rnd(-1.6, 1.6);
+      m.targetCurl = rnd(0.4, 1.7) * (Math.random() < 0.5 ? -1 : 1);
+      m.targetAmp = rnd(0.04, 0.13);
+      m.targetDetail = rnd(0.15, 0.55);
+      lastMeander = performance.now();
+    };
+
+    let lastT = performance.now();
+    let smoothT = 0;
+
+    function waveY(x: number) {
       const k = (x / Math.max(w, 1)) * Math.PI * 2;
+      const amp = m.amp * h;
       return (
-        h * b.y +
-        Math.sin(k * b.freq + t * b.speed * Math.PI + b.phase) * amp +
-        Math.sin(k * b.freq * 2.3 - t * b.speed * 700 * Math.PI + b.phase) * amp * 0.35
+        h * m.y +
+        Math.sin(k * m.curl + m.phase) * amp +
+        Math.sin(k * m.curl * 2.7 + m.phase * 1.6) * amp * m.detail
       );
     }
 
-    const c2d = ctx;
-    const draw = (t: number) => {
-      const palette = paletteQuery();
+    const draw = () => {
+      const green = document.documentElement.classList.contains("dark")
+        ? GREEN_DARK
+        : GREEN_LIGHT;
       c2d.clearRect(0, 0, w, h);
       c2d.lineCap = "round";
       c2d.lineJoin = "round";
 
-      for (const b of BANDS) {
-        c2d.beginPath();
-        const step = Math.max(6, Math.floor(w / 120));
-        for (let x = -step, first = true; x <= w + step; x += step, first = false) {
-          const y = waveY(b, x, t);
-          if (first) c2d.moveTo(x, y);
-          else c2d.lineTo(x, y);
-        }
-        c2d.strokeStyle = palette[b.color]!;
-        c2d.globalAlpha = b.alpha;
-        c2d.lineWidth = b.width;
-
-        // Glassy look: wide soft body + a thin bright crest on top.
-        c2d.stroke();
-        if (b.width > 40) {
-          c2d.globalAlpha = Math.min(1, b.alpha + 0.35);
-          c2d.lineWidth = Math.max(2, b.width * 0.12);
-          c2d.stroke();
-        }
+      c2d.beginPath();
+      const step = Math.max(8, Math.floor(w / 100));
+      for (let x = -step, first = true; x <= w + step; x += step, first = false) {
+        const y = waveY(x);
+        if (first) c2d.moveTo(x, y);
+        else c2d.lineTo(x, y);
       }
+
+      // Soft wide body.
+      c2d.strokeStyle = green;
+      c2d.globalAlpha = 0.18;
+      c2d.lineWidth = 74;
+      c2d.stroke();
+      // Mid band for depth.
+      c2d.globalAlpha = 0.3;
+      c2d.lineWidth = 38;
+      c2d.stroke();
+      // Glossy bright crest.
+      c2d.globalAlpha = 0.85;
+      c2d.lineWidth = 7;
+      c2d.stroke();
       c2d.globalAlpha = 1;
     };
 
     const loop = (t: number) => {
       if (!running) return;
-      draw(t);
+      const dt = Math.min(t - lastT, 100);
+      lastT = t;
+      smoothT += dt;
+
+      // Re-roll the drift target every MEANDER_MS.
+      if (t - lastMeander > MEANDER_MS) retarget();
+
+      // Ease everything toward its target (slow, watery).
+      const k = 1 - Math.pow(0.94, dt / 16.7);
+      m.y += (m.targetY - m.y) * k;
+      m.amp += (m.targetAmp - m.amp) * k;
+      m.curl += (m.targetCurl - m.curl) * k;
+      m.detail += (m.targetDetail - m.detail) * k;
+      m.phase += (m.targetPhase - m.phase) * k * 0.5;
+
+      draw();
       raf = requestAnimationFrame(loop);
     };
 
     if (reduced) {
-      draw(0);
+      draw();
+      // A single drift frame so a static ribbon is still positioned nicely.
     } else {
       raf = requestAnimationFrame(loop);
     }
@@ -118,6 +171,7 @@ export function LiquidRibbon() {
         cancelAnimationFrame(raf);
       } else if (!reduced) {
         running = true;
+        lastT = performance.now();
         raf = requestAnimationFrame(loop);
       }
     };

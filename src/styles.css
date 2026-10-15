@@ -366,9 +366,12 @@
   animation: mq-pulse-dot 1.6s ease-in-out infinite;
 }
 
-/* Liquid ribbon canvas softly blends with the page */
+/* Liquid ribbon canvas softly blends with the page; normal blending on
+   light theme so the deep green stays visible on white. */
 .mq-ribbon {
-  opacity: 0.75;
+  opacity: 0.8;
+}
+.dark .mq-ribbon {
   mix-blend-mode: screen;
 }
 
