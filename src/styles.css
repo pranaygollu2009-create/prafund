@@ -374,12 +374,13 @@ html.animations-off .mq-live-dot {
   animation: mq-pulse-dot 1.6s ease-in-out infinite;
 }
 
-/* Liquid ribbon canvas softly blends with the page; normal blending on
-   light theme so the deep green stays visible on white. */
+/* Liquid ribbon canvas softly blends with the page; light theme leans
+   even airier so the mint band melts into the white background. */
 .mq-ribbon {
-  opacity: 0.8;
+  opacity: 0.65;
 }
 .dark .mq-ribbon {
+  opacity: 0.8;
   mix-blend-mode: screen;
 }
 

@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef } from "react";
 
-const GREEN_LIGHT = "#0DBF7A"; // deep emerald so it reads on white
+const GREEN_LIGHT = "#4ED9A4"; // soft mint that blends into white pages
 const GREEN_DARK = "#2DE39F"; // brighter emerald for dark mode
 
 /**
@@ -91,9 +91,8 @@ export function LiquidRibbon({ paused = false }: { paused?: boolean }) {
     }
 
     const draw = (t: number) => {
-      const green = document.documentElement.classList.contains("dark")
-        ? GREEN_DARK
-        : GREEN_LIGHT;
+      const isDark = document.documentElement.classList.contains("dark");
+      const green = isDark ? GREEN_DARK : GREEN_LIGHT;
       const s = waveState(t);
       c2d.clearRect(0, 0, w, h);
       c2d.lineCap = "round";
@@ -110,34 +109,37 @@ export function LiquidRibbon({ paused = false }: { paused?: boolean }) {
         }
       };
 
-      // 1) Shadow: soft dark under-glow gives the band lift off the page.
+      // 1) Shadow: soft under-glow gives the band lift off the page.
+      //    Light mode uses a pale mint glow (never black) so it blends;
+      //    dark mode keeps the deep green-black depth vein.
       trace();
-      c2d.strokeStyle = document.documentElement.classList.contains("dark")
+      c2d.strokeStyle = isDark
         ? "rgba(0, 40, 25, 0.55)"
-        : "rgba(6, 78, 59, 0.35)";
+        : "rgba(78, 217, 164, 0.28)";
       c2d.save();
       c2d.translate(0, 16);
-      c2d.globalAlpha = 0.5;
+      c2d.globalAlpha = isDark ? 0.5 : 0.55;
       c2d.lineWidth = 80;
       c2d.stroke();
       c2d.restore();
 
       // 2) Volumetric body: same path, three thickness layers = fake 3D
-      //    shading so the band looks rounded like a glass tube.
+      //    shading so the band looks rounded like a glass tube. Layer
+      //    opacity is tuned per theme: airy on white, denser on dark.
       trace();
-      c2d.globalAlpha = 0.16;
+      c2d.globalAlpha = isDark ? 0.16 : 0.13;
       c2d.lineWidth = 96;
       c2d.stroke();
-      c2d.globalAlpha = 0.34;
+      c2d.globalAlpha = isDark ? 0.34 : 0.26;
       c2d.lineWidth = 54;
       c2d.stroke();
-      c2d.globalAlpha = 0.75;
+      c2d.globalAlpha = isDark ? 0.75 : 0.55;
       c2d.lineWidth = 26;
       c2d.stroke();
 
       // 3) Glossy crest.
       trace();
-      c2d.globalAlpha = 0.95;
+      c2d.globalAlpha = isDark ? 0.95 : 0.8;
       c2d.strokeStyle = green;
       c2d.lineWidth = 8;
       c2d.stroke();
