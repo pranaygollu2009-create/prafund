@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { HelpCircle, Menu, Moon, Sun, UserRound, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import logoMarkUrl from "@/assets/logo-mark.png";
+import { LiquidRibbon } from "@/components/mq/LiquidRibbon";
 import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 import { useSession } from "@/lib/mq/auth";
 
@@ -43,6 +44,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <span />
         <span />
       </div>
+      <LiquidRibbon />
       <div className="relative z-10 flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl">
 
