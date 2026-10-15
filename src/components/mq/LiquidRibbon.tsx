@@ -14,7 +14,11 @@ import { useEffect, useRef } from "react";
 const GREEN_LIGHT = "#0DBF7A"; // deep emerald so it reads on white
 const GREEN_DARK = "#2DE39F"; // brighter emerald for dark mode
 
-export function LiquidRibbon() {
+/**
+ * `paused` freezes the wave in place (and shows a still frame) when the
+ * user turns animations off from the header toggle.
+ */
+export function LiquidRibbon({ paused = false }: { paused?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -26,6 +30,7 @@ export function LiquidRibbon() {
 
     let raf = 0;
     let running = true;
+    let stoppedByPref = false;
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -164,7 +169,8 @@ export function LiquidRibbon() {
       raf = requestAnimationFrame(loop);
     };
 
-    if (reduced) {
+    if (reduced || paused) {
+      stoppedByPref = true;
       draw(0);
     } else {
       raf = requestAnimationFrame(loop);
@@ -174,7 +180,7 @@ export function LiquidRibbon() {
       if (document.hidden) {
         running = false;
         cancelAnimationFrame(raf);
-      } else if (!reduced) {
+      } else if (!reduced && !stoppedByPref) {
         running = true;
         raf = requestAnimationFrame(loop);
       }
@@ -187,7 +193,7 @@ export function LiquidRibbon() {
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [paused]);
 
   return (
     <canvas

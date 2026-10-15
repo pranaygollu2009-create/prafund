@@ -121,6 +121,14 @@
   color-scheme: dark;
 }
 
+/* Global animation kill-switch, set by the header's animation toggle.
+   Freezes the liquid blobs, the marquee tape and live pulse dots. */
+html.animations-off .mq-liquid span,
+html.animations-off .mq-tape-track,
+html.animations-off .mq-live-dot {
+  animation: none;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { HelpCircle, Menu, Moon, Sun, UserRound, X } from "lucide-react";
+import { HelpCircle, Menu, Moon, Pause, Play, Sun, UserRound, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import logoMarkUrl from "@/assets/logo-mark.png";
 import { LiquidRibbon } from "@/components/mq/LiquidRibbon";
@@ -35,7 +35,20 @@ export function Logo() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [anim, setAnim] = useState(true);
   const { user } = useSession();
+
+  useEffect(() => {
+    const on = localStorage.getItem("fundition.anim") !== "off";
+    setAnim(on);
+    document.documentElement.classList.toggle("animations-off", !on);
+  }, []);
+  const toggleAnim = () => {
+    const on = !anim;
+    setAnim(on);
+    localStorage.setItem("fundition.anim", on ? "on" : "off");
+    document.documentElement.classList.toggle("animations-off", !on);
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
@@ -44,7 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <span />
         <span />
       </div>
-      <LiquidRibbon />
+      <LiquidRibbon paused={!anim} />
       <div className="relative z-10 flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl">
 
@@ -64,6 +77,16 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <button
+              type="button"
+              onClick={toggleAnim}
+              aria-label={anim ? "Turn animations off" : "Turn animations on"}
+              aria-pressed={anim}
+              title={anim ? "Animations on — click to pause background motion" : "Animations off — click to resume"}
+              className="grid size-9 place-items-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
+            >
+              {anim ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+            </button>
             <Link
               to="/help"
               aria-label="Help center"
