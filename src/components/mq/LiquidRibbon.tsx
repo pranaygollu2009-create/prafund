@@ -42,6 +42,9 @@ export function LiquidRibbon({ paused = false }: { paused?: boolean }) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Resetting width clears the buffer — repaint the still frame so the
+      // paused/reduced-motion band never shows as an empty canvas.
+      if (!running) draw(0);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -171,6 +174,7 @@ export function LiquidRibbon({ paused = false }: { paused?: boolean }) {
 
     if (reduced || paused) {
       stoppedByPref = true;
+      running = false;
       draw(0);
     } else {
       raf = requestAnimationFrame(loop);
