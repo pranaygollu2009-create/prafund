@@ -6,6 +6,8 @@ import { LiquidRibbon } from "@/components/mq/LiquidRibbon";
 import { DISCLAIMER, SUPPORT_EMAIL } from "@/lib/mq/data";
 import { useSession } from "@/lib/mq/auth";
 
+export const REPO_URL = "https://github.com/pranaygollu2009-create/prafund";
+
 const NAV = [
   { to: "/how-it-works", label: "How It Works" },
   { to: "/dashboard", label: "Simulator" },
@@ -187,6 +189,14 @@ export function Shell({ children }: { children: ReactNode }) {
             <p className="font-semibold">Support</p>
             <a className="mt-3 block break-all text-info" href={`mailto:${SUPPORT_EMAIL}`}>
               {SUPPORT_EMAIL}
+            </a>
+            <a
+              className="mt-3 block text-muted-foreground transition-colors hover:text-foreground"
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ⭐ Star us on GitHub
             </a>
           </div>
         </div>
