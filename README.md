@@ -14,6 +14,9 @@ Prafund is a free financial life simulator for students — pick a career, get a
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/pranaygollu2009-create/prafund/main?style=flat-square&label=deploy)
 ![Static Badge](https://img.shields.io/badge/price-free-green?style=flat-square)
 ![Static Badge](https://img.shields.io/badge/real_money-none-blue?style=flat-square)
+![Clicks](https://img.shields.io/badge/clicks-1%2C000%2B%20and%20counting-2ea44f?style=flat-square)
+
+**🖱️ 1,000 clicks and counting — thanks for being part of it!**
 
 </div>
 
