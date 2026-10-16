@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Dices, LineChart, PiggyBank, Sparkles } from "lucide-react";
+import { ArrowRight, Dices, LineChart, MousePointerClick, PiggyBank, Sparkles } from "lucide-react";
 import { Shell } from "@/components/mq/Shell";
 import { SectionTitle, SimBadge, StatCard } from "@/components/mq/bits";
 import { QuoteCard, TickerTape } from "@/components/mq/market";
@@ -186,6 +186,13 @@ function Home() {
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 py-16">
+        <div className="mx-auto mb-12 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-border bg-surface px-6 py-4 text-center">
+          <MousePointerClick className="size-5 shrink-0 text-info" aria-hidden />
+          <p className="text-sm font-semibold">
+            <span className="mq-num text-lg text-gain">1,000</span>
+            <span className="text-muted-foreground"> clicks and counting — thanks for being part of it!</span>
+          </p>
+        </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs leading-relaxed text-muted-foreground">
           Also known as: prafund github io · pranaygollu2009 prafund · free financial life simulator game for students.
           Find us by searching those phrases, or bookmark this page in Safari or Chrome.
