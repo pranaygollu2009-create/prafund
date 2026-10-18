@@ -22,6 +22,7 @@ export function newGame(careerId: string, housing: string, transport: string, li
     xp: 0,
     history: [{ month: 0, netWorth: 800 }],
     lessonsDone: [],
+    challengesDone: [],
     achievements: [],
     plan: { save: 500, invest: 300, extraDebt: 0 },
     eventIndex: 0,
@@ -102,7 +103,11 @@ export function advanceMonth(prev: GameState, eventChoiceId: string | null): Gam
 function readLocal(): GameState | null {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as GameState) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GameState;
+    // Migrate older saves that predate knowledge challenges.
+    parsed.challengesDone ??= [];
+    return parsed;
   } catch {
     return null;
   }

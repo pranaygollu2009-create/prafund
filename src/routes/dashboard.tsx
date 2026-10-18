@@ -13,7 +13,7 @@ import {
 import { Shell } from "@/components/mq/Shell";
 import { InfoTip, SectionTitle, SimBadge, StatCard } from "@/components/mq/bits";
 import { CAREERS, EVENTS } from "@/lib/mq/data";
-import { expenses, financialHealth, money, netWorth, type GameState } from "@/lib/mq/engine";
+import { expenses, financialHealth, money, netWorth, resilienceScore, type GameState } from "@/lib/mq/engine";
 import { advanceMonth, useGame } from "@/lib/mq/store";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +71,7 @@ function Live({ state, save }: { state: GameState; save: (s: GameState | null) =
   const [running, setRunning] = useState(false);
   const e = expenses(state);
   const health = financialHealth(state);
+  const resilience = resilienceScore(state);
   const career = CAREERS.find((c) => c.id === state.career);
   const ev = EVENTS[state.eventIndex % EVENTS.length]!;
   const leftover = state.takeHome - e.total;
@@ -195,6 +196,44 @@ function Live({ state, save }: { state: GameState; save: (s: GameState | null) =
               ))}
             </ul>
           </div>
+        </div>
+
+        <div className="mq-card mt-4 p-5">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-medium text-muted-foreground">
+              <InfoTip
+                label="Resilience score"
+                text="How well this simulated journey could absorb a shock, built from emergency runway, debt obligations, fixed expenses and spare cash. Educational metric only — not a real credit score or financial assessment."
+              />
+            </p>
+            <SimBadge>Simulated</SimBadge>
+          </div>
+          <p className="mq-num mt-1 text-4xl font-bold">{resilience.total} / 100</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {resilience.monthsCovered.toFixed(1)} months of expenses covered by liquid simulated savings.
+          </p>
+          <div className="mt-3 h-2 rounded-full bg-secondary">
+            <div
+              className="h-2 rounded-full bg-info transition-all"
+              style={{ width: `${resilience.total}%` }}
+            />
+          </div>
+          <ul className="mt-4 space-y-2 text-sm">
+            {resilience.factors.map((f) => (
+              <li key={f.label}>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{f.label}</span>
+                  <span className="mq-num font-semibold">
+                    {Math.max(0, f.score)} / {f.max}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{f.detail}</p>
+                {f.suggestion && (
+                  <p className="mt-0.5 text-xs font-medium text-info">{f.suggestion}</p>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-2">

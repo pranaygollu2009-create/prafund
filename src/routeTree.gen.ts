@@ -13,11 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as InvestRouteImport } from './routes/invest'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as LifepathRouteImport } from './routes/lifepath'
 import { Route as MarketsRouteImport } from './routes/markets'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -45,6 +47,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -68,6 +75,11 @@ const InvestRoute = InvestRouteImport.update({
 const LearnRoute = LearnRouteImport.update({
   id: '/learn',
   path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LifepathRoute = LifepathRouteImport.update({
+  id: '/lifepath',
+  path: '/lifepath',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MarketsRoute = MarketsRouteImport.update({
@@ -110,11 +122,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
   '/invest': typeof InvestRoute
   '/learn': typeof LearnRoute
+  '/lifepath': typeof LifepathRoute
   '/markets': typeof MarketsRoute
   '/portfolio': typeof PortfolioRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -127,11 +141,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
   '/invest': typeof InvestRoute
   '/learn': typeof LearnRoute
+  '/lifepath': typeof LifepathRoute
   '/markets': typeof MarketsRoute
   '/portfolio': typeof PortfolioRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -146,11 +162,13 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
+  '/compare': typeof CompareRoute
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
   '/invest': typeof InvestRoute
   '/learn': typeof LearnRoute
+  '/lifepath': typeof LifepathRoute
   '/markets': typeof MarketsRoute
   '/portfolio': typeof PortfolioRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -165,11 +183,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/auth'
+    | '/compare'
     | '/dashboard'
     | '/help'
     | '/how-it-works'
     | '/invest'
     | '/learn'
+    | '/lifepath'
     | '/markets'
     | '/portfolio'
     | '/reset-password'
@@ -182,11 +202,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/auth'
+    | '/compare'
     | '/dashboard'
     | '/help'
     | '/how-it-works'
     | '/invest'
     | '/learn'
+    | '/lifepath'
     | '/markets'
     | '/portfolio'
     | '/reset-password'
@@ -200,11 +222,13 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/about'
     | '/auth'
+    | '/compare'
     | '/dashboard'
     | '/help'
     | '/how-it-works'
     | '/invest'
     | '/learn'
+    | '/lifepath'
     | '/markets'
     | '/portfolio'
     | '/reset-password'
@@ -219,11 +243,13 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
+  CompareRoute: typeof CompareRoute
   DashboardRoute: typeof DashboardRoute
   HelpRoute: typeof HelpRoute
   HowItWorksRoute: typeof HowItWorksRoute
   InvestRoute: typeof InvestRoute
   LearnRoute: typeof LearnRoute
+  LifepathRoute: typeof LifepathRoute
   MarketsRoute: typeof MarketsRoute
   PortfolioRoute: typeof PortfolioRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -262,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -295,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/learn'
       fullPath: '/learn'
       preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lifepath': {
+      id: '/lifepath'
+      path: '/lifepath'
+      fullPath: '/lifepath'
+      preLoaderRoute: typeof LifepathRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/markets': {
@@ -365,11 +405,13 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
+  CompareRoute: CompareRoute,
   DashboardRoute: DashboardRoute,
   HelpRoute: HelpRoute,
   HowItWorksRoute: HowItWorksRoute,
   InvestRoute: InvestRoute,
   LearnRoute: LearnRoute,
+  LifepathRoute: LifepathRoute,
   MarketsRoute: MarketsRoute,
   PortfolioRoute: PortfolioRoute,
   ResetPasswordRoute: ResetPasswordRoute,

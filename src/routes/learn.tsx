@@ -3,7 +3,8 @@ import { Check, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Shell } from "@/components/mq/Shell";
 import { SectionTitle } from "@/components/mq/bits";
-import { GLOSSARY, LESSONS } from "@/lib/mq/data";
+import { CHALLENGES, CHALLENGE_TOPICS, GLOSSARY, LESSONS } from "@/lib/mq/data";
+import { money, type GameState } from "@/lib/mq/engine";
 import { useGame } from "@/lib/mq/store";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,19 @@ function Learn() {
     save({ ...state, lessonsDone: [...state.lessonsDone, id], xp: state.xp + xp });
   };
 
+  const redeemChallenge = (id: string, correct: (typeof CHALLENGES)[number]["correct"]) => {
+    if (!state || state.challengesDone.includes(id)) return;
+    const next: GameState = {
+      ...state,
+      challengesDone: [...state.challengesDone, id],
+      xp: state.xp + correct.xp,
+      cash: state.cash + (correct.cash ?? 0),
+      savings: state.savings + (correct.savings ?? 0),
+      debt: Math.max(0, state.debt - (correct.debtReduction ?? 0)),
+    };
+    save(next);
+  };
+
   return (
     <Shell>
       <div className="mx-auto w-full max-w-5xl px-4 py-12">
@@ -71,6 +85,26 @@ function Learn() {
             />
           ))}
         </div>
+
+        {state && (
+          <section className="mt-16">
+            <SectionTitle
+              eyebrow="Knowledge challenges"
+              title="Answer right — your simulation gets a boost"
+              sub="These do more than award XP: a correct answer is applied to your journey itself. Each challenge can be redeemed once."
+            />
+            <div className="mt-6 space-y-4">
+              {CHALLENGES.map((ch) => (
+                <Challenge
+                  key={ch.id}
+                  challenge={ch}
+                  redeemed={!!state.challengesDone.includes(ch.id)}
+                  onCorrect={() => redeemChallenge(ch.id, ch.correct)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-16">
           <SectionTitle eyebrow="Daily money challenge" title="One question a day" />
@@ -189,6 +223,83 @@ function Lesson({
                 {picked === lesson.answer ? `Correct! ✓ +${lesson.xp} XP` : "Not quite ✗"}
               </span>{" "}
               {lesson.why}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Challenge({
+  challenge: ch,
+  redeemed,
+  onCorrect,
+}: {
+  challenge: (typeof CHALLENGES)[number];
+  redeemed: boolean;
+  onCorrect: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<number | null>(null);
+
+  return (
+    <div className={cn("mq-card p-6", redeemed && "border-gain bg-gain-soft")}>
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+        <span>
+          <span className="block font-display text-lg font-bold">{ch.title}</span>
+          <span className="block text-sm text-muted-foreground">
+            {CHALLENGE_TOPICS[ch.topic]} · +{ch.correct.xp} XP · changes your simulation
+          </span>
+        </span>
+        {redeemed ? (
+          <span className="inline-flex items-center gap-1 text-sm font-semibold text-gain">
+            <Check className="size-4" aria-hidden /> Applied
+          </span>
+        ) : (
+          <span className="text-sm font-semibold text-info">{open ? "Hide" : "Try challenge"}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="mt-4">
+          <p className="font-semibold">{ch.question}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {ch.options.map((o, i) => (
+              <button
+                key={o}
+                onClick={() => {
+                  setPicked(i);
+                  if (i === ch.answer && !redeemed) onCorrect();
+                }}
+                className={cn(
+                  "rounded-lg border px-4 py-3 text-sm font-medium",
+                  picked === i
+                    ? i === ch.answer
+                      ? "border-gain bg-gain-soft"
+                      : "border-alert bg-alert-soft"
+                    : "border-border hover:bg-secondary",
+                )}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+          {picked !== null && (
+            <p className="mt-4 text-sm">
+              <span
+                className={cn(
+                  "font-bold",
+                  picked === ch.answer
+                    ? "text-gain"
+                    : "text-alert",
+                )}
+              >
+                {picked === ch.answer
+                  ? `Correct! ✓ +${ch.correct.xp} XP — ${ch.correct.result}`
+                  : "Not quite ✗"}
+              </span>{" "}
+              {ch.why}
             </p>
           )}
         </div>

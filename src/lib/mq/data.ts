@@ -317,6 +317,85 @@ export const GLOSSARY = [
 
 export const DEFS: Record<string, string> = Object.fromEntries(GLOSSARY);
 
+/**
+ * Applying-knowledge challenges: answering correctly changes the simulation
+ * itself (cash, savings or simulated debt), not just XP. Each challenge can
+ * be redeemed once per journey and ships with the reasoning shown either way.
+ */
+export type KnowledgeChallenge = {
+  id: string;
+  topic: "taxes" | "interest" | "credit" | "emergency savings";
+  title: string;
+  question: string;
+  options: string[];
+  answer: number;
+  why: string;
+  correct: { cash?: number; savings?: number; debtReduction?: number; xp: number; result: string };
+};
+
+export const CHALLENGES: KnowledgeChallenge[] = [
+  {
+    id: "challenge-apr",
+    topic: "credit",
+    title: "The 19% APR question",
+    question:
+      "You carry a $1,000 simulated credit balance at 19% APR and pay only the minimum each month. What happens to the balance before you finish paying it?",
+    options: [
+      "It stays $1,000 until paid off",
+      "It grows — interest is added every month",
+      "It shrinks by 19% every month",
+    ],
+    answer: 1,
+    why: "APR is yearly, so roughly 19%/12 ≈ 1.58% in interest is added each month while the balance is carried.",
+    correct: {
+      debtReduction: 500,
+      xp: 200,
+      result: "Prafund paid down $500 of your simulated debt — carry less, owe less interest.",
+    },
+  },
+  {
+    id: "challenge-fund",
+    topic: "emergency savings",
+    title: "Right-size the emergency fund",
+    question:
+      "Your simulated monthly expenses are about $2,400. What's the usual starting target for an emergency fund?",
+    options: ["About $2,400", "About $4,800", "About $7,200"],
+    answer: 2,
+    why: "Three months of expenses — here $2,400 × 3 = $7,200 — is the common starting rule of thumb.",
+    correct: {
+      savings: 500,
+      xp: 200,
+      result: "Prafund seeded $500 into your simulated savings for getting the target right.",
+    },
+  },
+  {
+    id: "challenge-tax",
+    topic: "taxes",
+    title: "Gross vs take-home",
+    question:
+      "A job offers a $60,000 salary. Why is the amount that actually hits your account smaller?",
+    options: [
+      "The company keeps part of it as profit",
+      "Taxes for things like income and payroll are withheld first",
+      "Banks charge a fee to receive paychecks",
+    ],
+    answer: 1,
+    why: "Income tax, payroll taxes and other withholdings are taken out before pay reaches your account.",
+    correct: {
+      cash: 300,
+      xp: 200,
+      result: "Prafund added $300 to your simulated cash for knowing where your paycheck goes.",
+    },
+  },
+];
+
+export const CHALLENGE_TOPICS: Record<KnowledgeChallenge["topic"], string> = {
+  taxes: "Taxes",
+  interest: "Interest",
+  credit: "Credit",
+  "emergency savings": "Emergency savings",
+};
+
 export const DISCLAIMER =
   "Prafund is an educational financial simulation. Results are hypothetical and do not guarantee future investment performance or constitute personalized financial advice.";
 

@@ -14,6 +14,7 @@ export type GameState = {
   xp: number;
   history: { month: number; netWorth: number }[];
   lessonsDone: string[];
+  challengesDone: string[];
   achievements: string[];
   plan: { save: number; invest: number; extraDebt: number };
   eventIndex: number;
@@ -67,6 +68,80 @@ export const money = (n: number) =>
   (n < 0 ? "-" : "") +
   "$" +
   Math.abs(Math.round(n)).toLocaleString("en-US");
+
+export type ResilienceFactor = {
+  label: string;
+  score: number;
+  max: number;
+  detail: string;
+  suggestion: string | null;
+};
+
+export type ResilienceResult = {
+  total: number;
+  factors: ResilienceFactor[];
+  monthsCovered: number;
+};
+
+/**
+ * Financial Resilience Score: how well the simulated journey could absorb a
+ * shock — job loss, a big repair — without new debt. Educational metric only:
+ * it is not a real credit score or financial assessment.
+ */
+export function resilienceScore(s: GameState): ResilienceResult {
+  const e = expenses(s);
+  const liquid = s.savings + Math.max(0, s.cash);
+  const monthsCovered = e.total > 0 ? liquid / e.total : 0;
+  const spare = Math.max(0, s.takeHome - e.total - s.plan.save - s.plan.invest - s.plan.extraDebt);
+
+  const factors: ResilienceFactor[] = [
+    {
+      label: "Emergency runway",
+      score: Math.min(40, Math.round((monthsCovered / 3) * 40)),
+      max: 40,
+      detail: `${monthsCovered.toFixed(1)} months of expenses covered by ${money(liquid)} in savings and cash (target: 3).`,
+      suggestion:
+        monthsCovered >= 3
+          ? null
+          : `Build savings toward ${money(e.total * 3)} — three months of your simulated expenses.`,
+    },
+    {
+      label: "Debt obligations",
+      score: Math.max(0, Math.min(25, 25 - Math.round((s.debt / Math.max(1, s.takeHome)) * 12))),
+      max: 25,
+      detail:
+        s.debt === 0
+          ? "No simulated debt — nothing owed to interest."
+          : `${money(s.debt)} of simulated debt ≈ ${((s.debt / s.takeHome) * 100).toFixed(0)}% of one month's take-home.`,
+      suggestion:
+        s.debt === 0
+          ? null
+          : s.debt > s.takeHome * 0.5
+            ? "Direct more of your monthly plan to extra debt payments — balances here grow 19% APR."
+            : "Keep paying it down; every $250 less saves real interest over time.",
+    },
+    {
+      label: "Recurring expense load",
+      score: Math.max(0, Math.min(20, Math.round(((s.takeHome - e.total) / s.takeHome) * 100 / 2))),
+      max: 20,
+      detail: `Fixed sim expenses are ${money(e.total)}/mo, or ${e.total > 0 ? Math.round((e.total / s.takeHome) * 100) : 0}% of take-home.`,
+      suggestion:
+        e.total > s.takeHome * 0.8
+          ? "Lower your housing, transport or lifestyle tier to widen the monthly gap."
+          : null,
+    },
+    {
+      label: "Spare monthly cash",
+      score: Math.max(0, Math.min(15, Math.round((spare / Math.max(1, s.takeHome)) * 100)) / 2),
+      max: 15,
+      detail: `${money(spare)} left after expenses and your current save/invest plan.`,
+      suggestion: spare < 100 ? "Leave a little unplanned cash in the plan — shocks don't schedule themselves." : null,
+    },
+  ];
+
+  const total = Math.max(0, Math.min(100, factors.reduce((a, f) => a + Math.max(0, f.score), 0)));
+  return { total, factors, monthsCovered };
+}
 
 /** Box-Muller standard normal. */
 function randNormal() {

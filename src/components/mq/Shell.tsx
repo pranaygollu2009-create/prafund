@@ -11,6 +11,8 @@ export const REPO_URL = "https://github.com/pranaygollu2009-create/prafund";
 const NAV = [
   { to: "/how-it-works", label: "How It Works" },
   { to: "/dashboard", label: "Simulator" },
+  { to: "/lifepath", label: "Life Path" },
+  { to: "/compare", label: "What-If" },
   { to: "/markets", label: "Markets" },
   { to: "/portfolio", label: "Portfolio" },
   { to: "/invest", label: "Invest" },
