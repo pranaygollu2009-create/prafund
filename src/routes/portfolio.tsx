@@ -65,6 +65,14 @@ function PortfolioPage() {
   const [hist, setHist] = useState<Pt[]>([]);
   const [sym, setSym] = useState("AAPL");
   const [qty, setQty] = useState(1);
+  // Draft of the shares input as the user types it, so the field can be
+  // cleared or backspaced without snapping back to 1 on every keystroke.
+  const [qtyDraft, setQtyDraft] = useState("1");
+  // Coerce on external changes (symbol switch, initial mount).
+  useEffect(() => {
+    setQtyDraft(String(qty));
+  }, [qty, sym]);
+  const clampedQty = Math.max(1, Math.floor(Number(qtyDraft) || 1));
 
   useEffect(() => {
     try {
@@ -106,7 +114,8 @@ function PortfolioPage() {
   const held = pf.holdings[sym]?.shares ?? 0;
 
   const trade = (side: "buy" | "sell") => {
-    if (!sel || qty <= 0) return;
+    if (!sel) return;
+    const qty = clampedQty;
     const p = sel.price;
     const cost = p * qty;
     setPf((prev) => {
@@ -346,12 +355,18 @@ function PortfolioPage() {
                       id="qty"
                       type="number"
                       min={1}
-                      value={qty}
-                      onChange={(e) => setQty(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                      value={qtyDraft}
+                      onChange={(e) => {
+                        // Accept any intermediate text (empty, "0", "12");
+                        // invalid drafts resolve to 1 only when used.
+                        const v = e.target.value;
+                        if (v === "") setQtyDraft("");
+                        else setQtyDraft(v.replace(/[^0-9]/g, ""));
+                      }}
                       className="mq-num mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-lg font-bold"
                     />
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Cost: {priceLabel(sel.price * qty)} · Cash available: {priceLabel(pf.cash)}
+                      Cost: {priceLabel(sel.price * clampedQty)} · Cash available: {priceLabel(pf.cash)}
                     </p>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <button
