@@ -1,18 +1,20 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { Review } from "./seed-reviews";
 
 /**
  * Community reviews wall storage.
  *
- * Real posts live in the Supabase `reviews` table (anon-writable, RLS-guarded),
- * so a review posted by any visitor shows up for everyone. When Supabase is
- * unavailable (demo/static build without keys) the page still works with its
- * seeded reviews and device-local posts; the helpers below just degrade.
+ * Review posts go to the Prafund public reviews API (small Workers + D1
+ * service under the project's own Freebuff hosting) so any visitor's review
+ * shows up for everyone on the wall. The API returns a one-time delete token
+ * for each post made from this browser, stored locally so the poster can
+ * remove their own review later. When the API is unreachable, reviews still
+ * save on this device (marked "this device only") like the pre-API build.
  */
 
-const LOCAL_KEY = "prafund.reviews.local.v1";
+export const REVIEWS_API = "https://site-cbdd83d396b94426930c13c78aa7c323.freebuff.page/reviews";
 
-export type Line = Review;
+const LOCAL_KEY = "prafund.reviews.local.v1";
+const TOKENS_KEY = "prafund.reviews.tokens.v1";
 
 export function loadLocal(): Review[] {
   try {
@@ -32,6 +34,37 @@ export function saveLocal(next: Review[]) {
   }
 }
 
+function readTokens(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(TOKENS_KEY) || "{}") as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function rememberToken(id: string, token: string) {
+  try {
+    localStorage.setItem(TOKENS_KEY, JSON.stringify({ ...readTokens(), [id]: token }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function forgetToken(id: string) {
+  const next = { ...readTokens() };
+  delete next[id];
+  try {
+    localStorage.setItem(TOKENS_KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** True when this browser holds the delete token for a wall review. */
+export function canDeleteWallReview(id: string): boolean {
+  return Boolean(readTokens()[id]);
+}
+
 export type CommunityResult = {
   rows: Review[];
   available: boolean;
@@ -39,48 +72,54 @@ export type CommunityResult = {
 
 export async function listCommunity(): Promise<CommunityResult> {
   try {
-    const { data, error } = await supabase
-      .from("reviews")
-      .select("id, name, rating, body, user_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) throw error;
+    const res = await fetch(REVIEWS_API, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as {
+      rows: { id: string; name: string; rating: number; body: string; created_at: string }[];
+    };
     return {
       available: true,
-      rows: (data ?? []).map((r) => ({
+      rows: (data.rows ?? []).map((r) => ({
         id: r.id,
         name: r.name,
         rating: r.rating,
         body: r.body,
-        kind: "wall",
         at: r.created_at,
-        userId: r.user_id,
-      })) as Review[],
+        kind: "wall" as const,
+      })),
     };
   } catch {
     return { rows: [], available: false };
   }
 }
 
-export type PostInput = { name: string; rating: number; body: string; userId: string | null };
+export type PostInput = { name: string; rating: number; body: string };
 export type PostResult = { ok: true; review: Review } | { ok: false; error: string };
 
 export async function postReview(input: PostInput): Promise<PostResult> {
   try {
-    const { data, error } = await supabase
-      .from("reviews")
-      .insert({ name: input.name, rating: input.rating, body: input.body, user_id: input.userId })
-      .select("id, name, rating, body, created_at")
-      .single();
-    if (error) throw error;
+    const res = await fetch(REVIEWS_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: input.name, rating: input.rating, body: input.body }),
+    });
+    const payload = (await res.json()) as {
+      review?: { id: string; name: string; rating: number; body: string; created_at: string };
+      delete_token?: string;
+      error?: string;
+    };
+    if (!res.ok || !payload.review) {
+      return { ok: false, error: payload.error ?? `HTTP ${res.status}` };
+    }
+    if (payload.delete_token) rememberToken(payload.review.id, payload.delete_token);
     return {
       ok: true,
       review: {
-        id: data.id,
-        name: data.name,
-        rating: data.rating,
-        body: data.body,
-        at: data.created_at,
+        id: payload.review.id,
+        name: payload.review.name,
+        rating: payload.review.rating,
+        body: payload.review.body,
+        at: payload.review.created_at,
         kind: "wall",
       },
     };
@@ -90,37 +129,16 @@ export async function postReview(input: PostInput): Promise<PostResult> {
 }
 
 export async function removeOwnReview(id: string): Promise<boolean> {
+  const token = readTokens()[id];
+  if (!token) return false;
   try {
-    const { error } = await supabase.from("reviews").delete().eq("id", id);
-    return !error;
+    const res = await fetch(`${REVIEWS_API}?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) return false;
+    forgetToken(id);
+    return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * Live updates: subscribe to the `reviews` Postgres stream so new posts by
- * any visitor appear without a reload. Returns an unsubscribe that is safe
- * to call even when realtime/Supabase are unavailable.
- */
-export function subscribeToReviews(onChange: () => void): () => void {
-  try {
-    const channel = supabase
-      .channel("reviews-live")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "reviews" },
-        () => onChange(),
-      )
-      .subscribe();
-    return () => {
-      try {
-        supabase.removeChannel(channel);
-      } catch {
-        /* ignore */
-      }
-    };
-  } catch {
-    return () => {};
   }
 }

@@ -5,14 +5,13 @@ import { Shell } from "@/components/mq/Shell";
 import { SectionTitle } from "@/components/mq/bits";
 import { SEED_REVIEWS, type Review } from "@/lib/mq/seed-reviews";
 import {
+  canDeleteWallReview,
   listCommunity,
   loadLocal,
   postReview,
   removeOwnReview,
   saveLocal,
-  subscribeToReviews,
 } from "@/lib/mq/reviews";
-import { useSession } from "@/lib/mq/auth";
 
 export const Route = createFileRoute("/reviews")({
   head: () => ({
@@ -67,7 +66,6 @@ function when(iso: string) {
 }
 
 function Reviews() {
-  const { user } = useSession();
   const [community, setCommunity] = useState<Review[]>([]);
   const [local, setLocal] = useState<Review[]>([]);
   const [name, setName] = useState("");
@@ -87,13 +85,11 @@ function Reviews() {
         if (alive && res.available) setCommunity(res.rows);
       });
     refresh();
-    const unsub = subscribeToReviews(refresh);
-    const timer = setInterval(refresh, 30_000);
+    const timer = setInterval(refresh, 15_000);
     const onVisible = () => document.visibilityState === "visible" && refresh();
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
-      unsub();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -148,7 +144,6 @@ function Reviews() {
         name: myName.slice(0, 40),
         rating,
         body: text.trim().slice(0, 400),
-        userId: user?.id ?? null,
       });
       if (res.ok) {
         setCommunity((prev) => [res.review, ...prev]);
@@ -179,7 +174,7 @@ function Reviews() {
   }
 
   async function removeMe(r: Review) {
-    if (r.kind === "wall") {
+    if (r.kind === "wall" && canDeleteWallReview(r.id)) {
       const done = await removeOwnReview(r.id);
       if (done) setCommunity((prev) => prev.filter((x) => x.id !== r.id));
       return;
@@ -336,7 +331,7 @@ function Reviews() {
                     <span className="text-xs text-muted-foreground">{when(r.at)}</span>
                   </div>
                 </div>
-                {(r.kind === "local" || (r.kind === "wall" && user && user.id === r.userId)) && (
+                {(r.kind === "local" || (r.kind === "wall" && canDeleteWallReview(r.id))) && (
                   <button
                     onClick={() => removeMe(r)}
                     aria-label={`Delete review by ${r.name}`}
