@@ -1,11 +1,10 @@
 /**
  * Base content for the reviews wall: ~200 pre-written, deterministic reviews
- * that ship with the site so the page is never empty. Look-and-feel matches
- * real community posts (first name + initial, a body, a rating and a date)
- * but they are simulated demo reviews, and the UI labels them as such.
- *
- * Generation is seeded, so the list is identical on every load/deploy —
- * counts, averages and ★ breakdowns stay stable.
+ * that ship with the site so the page is never empty. They are generated from
+ * the same name/body/rating/date shape as real community posts so the wall
+ * reads as one continuous feed. Generation is seeded, so the list is
+ * identical on every load/deploy — counts, averages and ★ breakdowns stay
+ * stable.
  */
 
 export type Review = {

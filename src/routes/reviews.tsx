@@ -325,11 +325,6 @@ function Reviews() {
                 <div>
                   <p className="font-semibold">
                     {r.name}
-                    {r.kind === "seed" && (
-                      <span className="ml-2 rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-medium text-info">
-                        demo
-                      </span>
-                    )}
                     {r.kind === "local" && (
                       <span className="ml-2 rounded-full bg-alert/10 px-2 py-0.5 text-[10px] font-medium text-alert">
                         this device only
