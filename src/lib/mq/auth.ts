@@ -1,20 +1,28 @@
 import { useEffect, useState } from "react";
-import { currentUser, subscribe, type AuthUser } from "./localAuth";
+import { authReady, currentUser, subscribe, type AuthUser } from "./localAuth";
 
 export type { AuthUser };
 
 /**
- * The signed-in player. Accounts are stored in this browser (see localAuth.ts),
- * so this resolves immediately instead of waiting on a network round trip.
+ * The signed-in player. Resolves as soon as the account backend is known —
+ * instantly for browser-local accounts, after one session check for cloud ones.
  */
 export function useSession() {
   const [user, setUser] = useState<AuthUser | null>(() => currentUser());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(currentUser());
-    setLoading(false);
-    return subscribe(() => setUser(currentUser()));
+    let alive = true;
+    const unsubscribe = subscribe(() => setUser(currentUser()));
+    void authReady().then(() => {
+      if (!alive) return;
+      setUser(currentUser());
+      setLoading(false);
+    });
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
   }, []);
 
   return { user, loading };

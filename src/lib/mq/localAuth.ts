@@ -1,16 +1,26 @@
 /**
- * Browser-local accounts for Prafund.
+ * Accounts for Prafund.
  *
- * The Supabase project that used to hold sign-in and cloud saves no longer
- * exists, so accounts and sessions now live in this browser — which matches
- * the rest of the app: the whole simulation is local
- * (`moneyquest.save.v1`) and none of it is real money.
- *
- * Google sign-in still verifies with Google itself (Identity Services in
- * routes/auth.tsx hands us a signed ID token); we only keep the resulting
- * profile here instead of in a remote database.
+ * Two backends, chosen at runtime:
+ *  - **cloud** — a Supabase project (see supabase/schema.sql). Real email and
+ *    Google accounts plus cross-device saves; chosen when VITE_SUPABASE_URL and
+ *    VITE_SUPABASE_PUBLISHABLE_KEY are set and the project answers.
+ *  - **local** — accounts in this browser (salted SHA-256 in localStorage),
+ *    used when no project is configured or it is unreachable, so sign-in never
+ *    dead-ends. The simulation save is local in both modes.
  */
 import type { GameState } from "./engine";
+import { cloudAvailable, supabaseConfigured } from "./supabase";
+import {
+  cloudDeleteAccount,
+  cloudResetPassword,
+  cloudSetUsername,
+  cloudSignInGoogle,
+  cloudSignInPassword,
+  cloudSignOut,
+  cloudSignUp,
+  initCloudAuth,
+} from "./cloudAuth";
 
 export type AuthUser = {
   id: string;
@@ -20,6 +30,9 @@ export type AuthUser = {
   picture?: string;
   createdAt: number;
 };
+
+/** `emailed: true` means a reset link was sent instead of the password being changed. */
+export type PasswordResetResult = { emailed: boolean };
 
 type StoredAccount = AuthUser & { salt?: string; passwordHash?: string };
 
@@ -32,6 +45,40 @@ const listeners = new Set<() => void>();
 function emit() {
   for (const fn of listeners) fn();
 }
+
+/* ------------------------------------------------------------------ cloud -- */
+
+let backend: "local" | "cloud" = "local";
+let cloudUser: AuthUser | null = null;
+let booting: Promise<void> | null = null;
+
+/** Resolves once we know whether this page runs on cloud or local accounts. */
+export function authReady(): Promise<void> {
+  booting ??= boot();
+  return booting;
+}
+
+async function boot() {
+  if (!supabaseConfigured || !(await cloudAvailable())) return;
+  try {
+    await initCloudAuth((user) => {
+      cloudUser = user;
+      backend = "cloud";
+      emit();
+    });
+    backend = "cloud";
+  } catch {
+    backend = "local";
+  }
+}
+
+/** True when real accounts and cross-device saves are active. */
+export async function isCloud(): Promise<boolean> {
+  await authReady();
+  return backend === "cloud";
+}
+
+/* ------------------------------------------------------------------ local -- */
 
 function readAccounts(): Record<string, StoredAccount> {
   try {
@@ -100,8 +147,11 @@ function startSession(id: string) {
   emit();
 }
 
+/* ---------------------------------------------------------------- public --- */
+
 /** The signed-in account, or null. Safe to call during SSR. */
 export function currentUser(): AuthUser | null {
+  if (backend === "cloud") return cloudUser;
   try {
     const id = localStorage.getItem(SESSION_KEY);
     if (!id) return null;
@@ -112,6 +162,7 @@ export function currentUser(): AuthUser | null {
   }
 }
 
+/** Looks up a browser-local account (cloud accounts come from the session). */
 export function accountById(id: string): AuthUser | null {
   const account = readAccounts()[id];
   return account ? publicUser(account) : null;
@@ -126,6 +177,12 @@ export function subscribe(fn: () => void): () => void {
 }
 
 export function signOut() {
+  if (backend === "cloud") {
+    cloudUser = null;
+    void cloudSignOut();
+    emit();
+    return;
+  }
   try {
     localStorage.removeItem(SESSION_KEY);
   } catch {
@@ -139,6 +196,12 @@ export async function signUpWithPassword(
   password: string,
   username: string,
 ): Promise<AuthUser> {
+  if (await isCloud()) {
+    const user = await cloudSignUp(email, password, username);
+    cloudUser = user;
+    emit();
+    return user;
+  }
   const mail = email.trim().toLowerCase();
   const accounts = readAccounts();
   if (Object.values(accounts).some((a) => a.email === mail)) {
@@ -162,6 +225,12 @@ export async function signUpWithPassword(
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<AuthUser> {
+  if (await isCloud()) {
+    const user = await cloudSignInPassword(email, password);
+    cloudUser = user;
+    emit();
+    return user;
+  }
   const mail = email.trim().toLowerCase();
   const account = Object.values(readAccounts()).find((a) => a.email === mail);
   if (!account) {
@@ -190,7 +259,13 @@ function decodeIdToken(token: string): Record<string, unknown> {
 }
 
 /** Completes sign-in from a Google Identity Services ID token. */
-export function signInWithGoogleCredential(credential: string): AuthUser {
+export async function signInWithGoogleCredential(credential: string): Promise<AuthUser> {
+  if (await isCloud()) {
+    const user = await cloudSignInGoogle(credential);
+    cloudUser = user;
+    emit();
+    return user;
+  }
   const payload = decodeIdToken(credential);
   const email = String(payload["email"] ?? "").trim().toLowerCase();
   if (!email) throw new Error("Google didn't return an email address.");
@@ -218,7 +293,15 @@ export function signInWithGoogleCredential(credential: string): AuthUser {
   return publicUser(account);
 }
 
-export function setUsername(name: string): AuthUser | null {
+export async function setUsername(name: string): Promise<AuthUser | null> {
+  if (await isCloud()) {
+    const user = await cloudSetUsername(name);
+    if (user) {
+      cloudUser = user;
+      emit();
+    }
+    return user;
+  }
   const user = currentUser();
   if (!user) return null;
   const accounts = readAccounts();
@@ -230,8 +313,19 @@ export function setUsername(name: string): AuthUser | null {
   return publicUser(account);
 }
 
-/** Sets a new password for a local email account (the "forgot password" path). */
-export async function resetPasswordForEmail(email: string, password: string): Promise<AuthUser> {
+/** Sets a new password, or emails a reset link when running on cloud accounts. */
+export async function resetPasswordForEmail(
+  email: string,
+  password: string,
+): Promise<PasswordResetResult> {
+  if (await isCloud()) {
+    const result = await cloudResetPassword(email, password);
+    if (result.user) {
+      cloudUser = result.user;
+      emit();
+    }
+    return { emailed: result.emailed };
+  }
   const mail = email.trim().toLowerCase();
   const accounts = readAccounts();
   const account = Object.values(accounts).find((a) => a.email === mail);
@@ -245,16 +339,22 @@ export async function resetPasswordForEmail(email: string, password: string): Pr
   account.passwordHash = await digest(`${account.salt}|${password}`);
   writeAccounts(accounts);
   startSession(account.id);
-  return publicUser(account);
+  return { emailed: false };
 }
 
 /** Removes the signed-in account and this browser's simulated progress. */
-export function deleteCurrentAccount() {
-  const user = currentUser();
-  if (user) {
-    const accounts = readAccounts();
-    delete accounts[user.id];
-    writeAccounts(accounts);
+export async function deleteCurrentAccount(): Promise<void> {
+  if (await isCloud()) {
+    const user = cloudUser;
+    if (user) await cloudDeleteAccount(user.id);
+    cloudUser = null;
+  } else {
+    const user = currentUser();
+    if (user) {
+      const accounts = readAccounts();
+      delete accounts[user.id];
+      writeAccounts(accounts);
+    }
   }
   try {
     localStorage.removeItem(SESSION_KEY);

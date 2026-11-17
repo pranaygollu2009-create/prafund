@@ -111,13 +111,15 @@ function AuthPage() {
           auto_select: false,
           cancel_on_tap_outside: true,
           callback: (response: { credential?: string }) => {
-            try {
-              if (!response?.credential) throw new Error("Google didn't return a credential.");
-              signInWithGoogleCredential(response.credential);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "We couldn't finish Google sign-in.");
-              setBusy(false);
-            }
+            void (async () => {
+              try {
+                if (!response?.credential) throw new Error("Google didn't return a credential.");
+                await signInWithGoogleCredential(response.credential);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "We couldn't finish Google sign-in.");
+                setBusy(false);
+              }
+            })();
           },
         });
         googleReady.current = true;
@@ -143,8 +145,12 @@ function AuthPage() {
     try {
       if (mode === "forgot") {
         if (password.length < 6) throw new Error("Choose a password with at least 6 characters.");
-        await resetPasswordForEmail(email, password);
-        setNotice("Password updated. Taking you in…");
+        const result = await resetPasswordForEmail(email, password);
+        setNotice(
+          result.emailed
+            ? "We've emailed you a reset link — open it to choose a new password."
+            : "Password updated. Taking you in…",
+        );
       } else if (mode === "signup") {
         await signUpWithPassword(email, password, username);
       } else {
@@ -296,8 +302,9 @@ function AuthPage() {
           </div>
 
           <p className="mt-6 text-xs text-muted-foreground">
-            Accounts for this app are stored in your browser — nothing is sent to a server. Prafund
-            never asks for bank, brokerage or card details. Need help?{" "}
+            Accounts are protected by your account provider — this deployment keeps
+            the simulation in your account so you can pick it up on another device.
+            Prafund never asks for bank, brokerage or card details. Need help?{" "}
             <Link to="/help" className="underline">
               Visit the help center
             </Link>

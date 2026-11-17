@@ -25,15 +25,19 @@ function ResetPassword() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await resetPasswordForEmail(email, password);
-      setDone(true);
+      const result = await resetPasswordForEmail(email, password);
+      if (result.emailed) {
+        setDone("We've emailed you a reset link — open it on this device to finish.");
+        return;
+      }
+      setDone("✓ Password updated. Taking you to your dashboard…");
       setTimeout(() => void navigate({ to: "/dashboard", replace: true }), 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn't update that password.");
@@ -48,9 +52,7 @@ function ResetPassword() {
         <div className="mq-card p-8">
           <h1 className="font-display text-2xl font-bold">Choose a new password</h1>
           {done ? (
-            <p className="mt-4 text-sm text-gain">
-              ✓ Password updated. Taking you to your dashboard…
-            </p>
+            <p className="mt-4 text-sm text-gain">{done}</p>
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div>
