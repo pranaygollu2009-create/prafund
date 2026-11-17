@@ -67,7 +67,8 @@ function Markets() {
     retry: 1,
   });
 
-  const list = quotes.data ?? [];
+  const list = quotes.data?.quotes ?? [];
+  const offline = quotes.data?.simulated ?? false;
   const sel = list.find((x) => x.symbol === symbol);
   const indexes = list.filter((x) => INDEXES.includes(x.symbol));
   const stocks = list.filter((x) => !INDEXES.includes(x.symbol));
@@ -94,6 +95,14 @@ function Markets() {
           title="Live markets"
           sub="Real quotes for US stocks, ETFs and indexes, refreshed every 15 seconds. Quotes may be delayed. For learning only — not investment advice."
         />
+
+        {offline && (
+          <div className="mq-card mt-6 p-5 text-sm">
+            <span className="font-semibold">Live market data is offline.</span> This page is showing
+            simulated practice prices so it still works — they are not real quotes.{" "}
+            <button className="font-semibold underline" onClick={() => quotes.refetch()}>Try again</button>
+          </div>
+        )}
 
         {quotes.isError && (
           <div className="mq-card mt-6 p-5 text-sm">
@@ -227,8 +236,10 @@ function Markets() {
         <div className="mq-card mt-10 p-6">
           <h2 className="font-display text-xl font-bold">About this data</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Prices, market caps and ratios come from public market data (Yahoo Finance) and may be delayed. Past
-            performance doesn't guarantee future results. Want to practice trading without risk?
+            {offline
+              ? "Live quotes are unavailable right now, so prices, charts and changes on this page come from a random-walk practice simulation. They are not real quotes and must not be used for decisions."
+              : "Prices, market caps and ratios come from public market data (Yahoo Finance) and may be delayed. Past performance doesn't guarantee future results."}{" "}
+            Want to practice trading without risk?
           </p>
           <Link to="/portfolio" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground">
             Try the practice portfolio <ArrowRight className="size-4" aria-hidden />
