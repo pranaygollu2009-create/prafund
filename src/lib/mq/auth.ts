@@ -1,26 +1,20 @@
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { currentUser, subscribe, type AuthUser } from "./localAuth";
 
+export type { AuthUser };
+
+/**
+ * The signed-in player. Accounts are stored in this browser (see localAuth.ts),
+ * so this resolves immediately instead of waiting on a network round trip.
+ */
 export function useSession() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => currentUser());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let alive = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!alive) return;
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-    return () => {
-      alive = false;
-      sub.subscription.unsubscribe();
-    };
+    setUser(currentUser());
+    setLoading(false);
+    return subscribe(() => setUser(currentUser()));
   }, []);
 
   return { user, loading };

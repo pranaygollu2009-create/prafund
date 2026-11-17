@@ -31,6 +31,9 @@ jobs:
           # Set these in repo Settings -> Secrets and variables -> Actions.
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Optional: Google sign-in. Set the repo secret from Google Cloud Console
+          # (OAuth client ID, Web application, with the Pages origin authorised).
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           # Optional: live market feed (deploy supabase/functions/market-quotes first).
           # If unset, the site falls back to clearly-labeled simulated prices.
           VITE_MARKET_QUOTES_URL: ${{ secrets.VITE_MARKET_QUOTES_URL }}

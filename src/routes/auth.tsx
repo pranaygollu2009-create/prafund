@@ -1,9 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Loader2, Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Shell } from "@/components/mq/Shell";
 import { safePath, useSession } from "@/lib/mq/auth";
+import {
+  resetPasswordForEmail,
+  signInWithGoogleCredential,
+  signInWithPassword,
+  signUpWithPassword,
+} from "@/lib/mq/localAuth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -31,16 +36,43 @@ export const Route = createFileRoute("/auth")({
 type Mode = "signin" | "signup" | "forgot";
 
 /**
- * Absolute URL of the app root, including the deploy base path
- * (e.g. https://pranaygollu2009-create.github.io/prafund/ on GitHub Pages).
- * Email-verification links redirect here — a bare origin would 404 because
- * the user-site root has no Pages deployment.
+ * Google OAuth client ID (Google Cloud Console → Credentials → OAuth client ID,
+ * type "Web application", with https://pranaygollu2009-create.github.io in the
+ * authorised JavaScript origins). Baked in at build time.
  */
-function siteRoot(): string {
-  const base = (import.meta as unknown as { env: Record<string, string | undefined> }).env["BASE_URL"] ?? "/";
-  return `${window.location.origin}${base.endsWith("/") ? base : `${base}/`}`;
-}
+const GOOGLE_CLIENT_ID =
+  (import.meta as unknown as { env: Record<string, string | undefined> }).env[
+    "VITE_GOOGLE_CLIENT_ID"
+  ]?.trim() ?? "";
 
+type GisId = {
+  initialize: (options: Record<string, unknown>) => void;
+  prompt: () => void;
+};
+
+/** Loads Google Identity Services once, on demand. */
+function loadGoogleIdentity(): Promise<GisId> {
+  return new Promise((resolve, reject) => {
+    const existing = (window as unknown as { google?: { accounts?: { id?: GisId } } }).google
+      ?.accounts?.id;
+    if (existing) {
+      resolve(existing);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      const id = (window as unknown as { google?: { accounts?: { id?: GisId } } }).google?.accounts
+        ?.id;
+      if (id) resolve(id);
+      else reject(new Error("Google Identity Services did not initialise."));
+    };
+    script.onerror = () => reject(new Error("Could not load Google sign-in."));
+    document.head.appendChild(script);
+  });
+}
 
 function AuthPage() {
   const search = Route.useSearch();
@@ -55,7 +87,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [checkEmail, setCheckEmail] = useState(false);
+  const googleReady = useRef(false);
 
   useEffect(() => {
     if (!loading && user) void navigate({ to: next, replace: true });
@@ -63,44 +95,42 @@ function AuthPage() {
 
   async function handleGoogle() {
     setError(null);
+    setNotice(null);
+    if (!GOOGLE_CLIENT_ID) {
+      setError(
+        "Google sign-in isn't set up for this deployment yet (no Google OAuth client ID). Use email instead — or add VITE_GOOGLE_CLIENT_ID and redeploy.",
+      );
+      return;
+    }
     setBusy(true);
     try {
-      sessionStorage.setItem("moneyquest.next", next);
-      // Pre-flight: signInWithOAuth navigates the browser immediately, so a
-      // disabled provider would land the user on a raw JSON 400 page (it can
-      // only fail server-side, after navigation). /auth/v1/settings publicly
-      // lists enabled external providers — check it first.
-      const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env;
-      const res = await fetch(`${env["VITE_SUPABASE_URL"]}/auth/v1/settings`, {
-        headers: { apikey: env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? "" },
-      });
-      if (res.ok) {
-        const settings = (await res.json()) as { external?: Record<string, unknown> };
-        if (!settings.external?.["google"]) {
-          setError("Google sign-in is not configured yet. Please use email and password.");
-          setBusy(false);
-          return;
-        }
+      const id = await loadGoogleIdentity();
+      if (!googleReady.current) {
+        id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          callback: (response: { credential?: string }) => {
+            try {
+              if (!response?.credential) throw new Error("Google didn't return a credential.");
+              signInWithGoogleCredential(response.credential);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "We couldn't finish Google sign-in.");
+              setBusy(false);
+            }
+          },
+        });
+        googleReady.current = true;
       }
-      // Supabase's native implicit-flow OAuth — the Lovable OAuth broker only
-      // exists on Lovable's own hosting (its /~oauth/initiate route 404s on
-      // GitHub Pages, so users never reached Google at all).
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: siteRoot() },
-      });
-      if (error) {
-        setError(
-          error.message.includes("not enabled")
-            ? "Google sign-in is not configured yet. Please use email and password."
-            : "We couldn't start Google sign-in. Please try again.",
-        );
-        setBusy(false);
-        return;
-      }
-      // Successful OAuth navigates the browser away to Google; nothing to do.
-    } catch {
-      setError("We couldn't start Google sign-in. Please try again.");
+      id.prompt();
+      // One Tap can close silently; never leave the button spinning forever.
+      window.setTimeout(() => setBusy(false), 20_000);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `We couldn't reach Google: ${err.message}`
+          : "We couldn't reach Google. Check your connection and try again.",
+      );
       setBusy(false);
     }
   }
@@ -112,77 +142,19 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "forgot") {
-        const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${siteRoot()}reset-password`,
-        });
-        if (err) throw err;
-        setNotice("Password reset link sent. Check your inbox.");
+        if (password.length < 6) throw new Error("Choose a password with at least 6 characters.");
+        await resetPasswordForEmail(email, password);
+        setNotice("Password updated. Taking you in…");
       } else if (mode === "signup") {
-        const { data, error: err } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: siteRoot(),
-            data: { username: username.trim() || email.split("@")[0] },
-          },
-        });
-        if (err) throw err;
-        if (!data.session) setCheckEmail(true);
+        await signUpWithPassword(email, password, username);
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        await signInWithPassword(email, password);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
-  }
-
-  async function resend() {
-    setNotice(null);
-    setError(null);
-    const { error: err } = await supabase.auth.resend({ type: "signup", email });
-    if (err) setError(err.message);
-    else setNotice("Verification email sent again.");
-  }
-
-  if (checkEmail) {
-    return (
-      <Shell>
-        <div className="mx-auto w-full max-w-md px-4 py-16">
-          <div className="mq-card p-8 text-center">
-            <Mail className="mx-auto size-8 text-info" aria-hidden />
-            <h1 className="mt-4 font-display text-2xl font-bold">Check your email 📬</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              We sent a verification link to <span className="font-semibold">{email}</span>. Click it
-              to activate your account, then come back and log in.
-            </p>
-            {notice && <p className="mt-4 text-sm text-gain">{notice}</p>}
-            {error && <p className="mt-4 text-sm text-alert">{error}</p>}
-            <div className="mt-6 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={resend}
-                className="rounded-md border border-border px-4 py-2 text-sm font-semibold"
-              >
-                Resend email
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckEmail(false);
-                  setMode("signup");
-                }}
-                className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground"
-              >
-                Use a different email
-              </button>
-            </div>
-          </div>
-        </div>
-      </Shell>
-    );
   }
 
   return (
@@ -198,8 +170,8 @@ function AuthPage() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {mode === "forgot"
-              ? "We'll email you a link to choose a new password."
-              : "Your simulated financial journey is saved to your account."}
+              ? "Choose a new password for the account on this device."
+              : "Your simulated financial journey is saved with your account."}
           </p>
 
           {mode !== "forgot" && (
@@ -255,23 +227,21 @@ function AuthPage() {
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            {mode !== "forgot" && (
-              <div>
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="password" className="text-sm font-medium">
+                {mode === "forgot" ? "New password" : "Password"}
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
 
             {error && (
               <p role="alert" className="text-sm text-alert">
@@ -289,7 +259,7 @@ function AuthPage() {
               {mode === "signup"
                 ? "Create account"
                 : mode === "forgot"
-                  ? "Send reset link"
+                  ? "Set new password"
                   : "Log in"}
             </button>
           </form>
@@ -326,8 +296,8 @@ function AuthPage() {
           </div>
 
           <p className="mt-6 text-xs text-muted-foreground">
-            Prafund never asks for bank, brokerage or card details. Everything in the app is
-            simulated money. Need help?{" "}
+            Accounts for this app are stored in your browser — nothing is sent to a server. Prafund
+            never asks for bank, brokerage or card details. Need help?{" "}
             <Link to="/help" className="underline">
               Visit the help center
             </Link>

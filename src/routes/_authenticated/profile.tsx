@@ -2,10 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Loader2, LogOut, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Shell } from "@/components/mq/Shell";
 import { SectionTitle, SimBadge } from "@/components/mq/bits";
 import { useSession } from "@/lib/mq/auth";
+import { signOut as signOutLocal } from "@/lib/mq/localAuth";
 import { levelFor, loadProfile, saveProfile, type Profile } from "@/lib/mq/cloud";
 import { useGame } from "@/lib/mq/store";
 import { money, netWorth } from "@/lib/mq/engine";
@@ -62,7 +62,7 @@ function ProfilePage() {
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    signOutLocal();
     void navigate({ to: "/auth", search: { redirect: undefined, mode: undefined }, replace: true });
   }
 
@@ -72,7 +72,7 @@ function ProfilePage() {
     try {
       await deleteMyAccount();
       localStorage.removeItem("moneyquest.save.v1");
-      await supabase.auth.signOut();
+      signOutLocal();
       void navigate({ to: "/", replace: true });
     } catch {
       setError("We couldn't delete the account. Please try again or email support.");

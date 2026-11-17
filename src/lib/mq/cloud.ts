@@ -1,5 +1,13 @@
-import { supabase } from "@/integrations/supabase/client";
+/**
+ * Profile + save helpers.
+ *
+ * Accounts live in this browser (see localAuth.ts) and the simulation save is
+ * already kept in localStorage (`moneyquest.save.v1`), so there is no remote
+ * database any more. These functions keep their old call signatures so the
+ * profile page and the game store work unchanged.
+ */
 import type { GameState } from "./engine";
+import { accountById, setUsername } from "./localAuth";
 
 export type Profile = {
   id: string;
@@ -13,36 +21,26 @@ export function levelFor(xp: number) {
 }
 
 export async function loadProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, username, level, xp")
-    .eq("id", userId)
-    .maybeSingle();
-  return data ?? null;
+  const account = accountById(userId);
+  if (!account) return null;
+  return { id: account.id, username: account.username, level: 1, xp: 0 };
 }
 
 export async function saveProfile(userId: string, patch: Partial<Omit<Profile, "id">>) {
-  const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
-  if (error) throw error;
+  const account = accountById(userId);
+  if (!account) throw new Error("You're not signed in on this device.");
+  if (patch.username !== undefined) setUsername(patch.username);
 }
 
-export async function loadCloudSave(userId: string): Promise<GameState | null> {
-  const { data } = await supabase
-    .from("game_saves")
-    .select("state")
-    .eq("user_id", userId)
-    .maybeSingle();
-  return (data?.state as GameState | undefined) ?? null;
+/** No cloud anymore: the save in localStorage is the source of truth. */
+export async function loadCloudSave(_userId: string): Promise<GameState | null> {
+  return null;
 }
 
-export async function writeCloudSave(userId: string, state: GameState) {
-  await supabase.from("game_saves").upsert({ user_id: userId, state: state as never });
-  await supabase
-    .from("profiles")
-    .update({ xp: state.xp, level: levelFor(state.xp) })
-    .eq("id", userId);
+export async function writeCloudSave(_userId: string, _state: GameState): Promise<void> {
+  /* local save only */
 }
 
-export async function clearCloudSave(userId: string) {
-  await supabase.from("game_saves").delete().eq("user_id", userId);
+export async function clearCloudSave(_userId: string): Promise<void> {
+  /* local save only */
 }

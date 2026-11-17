@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import logoMarkFavicon from "../assets/logo-mark-180.png";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { supabase } from "@/integrations/supabase/client";
+import { subscribe as subscribeToAccount } from "@/lib/mq/localAuth";
 
 
 function NotFoundComponent() {
@@ -181,12 +181,12 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    // Accounts are local (lib/mq/localAuth): re-run route guards and queries
+    // whenever the signed-in player changes.
+    return subscribeToAccount(() => {
       void router.invalidate();
-      if (event !== "SIGNED_OUT") void queryClient.invalidateQueries();
+      void queryClient.invalidateQueries();
     });
-    return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
   return (
