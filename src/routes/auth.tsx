@@ -180,7 +180,7 @@ function AuthPage() {
               : "Your simulated financial journey is saved with your account."}
           </p>
 
-          {mode !== "forgot" && (
+          {mode !== "forgot" && GOOGLE_CLIENT_ID !== "" && (
             <>
               <button
                 type="button"
